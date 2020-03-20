@@ -103,17 +103,6 @@ void mesh_data_init_2d(const int local_nx, const int local_ny,
                        Kokkos::View<double *> edgedx, Kokkos::View<double *> edgedy, Kokkos::View<double *> celldx,
                        Kokkos::View<double *> celldy);
 
-// void initialise_mesh_3d(Mesh* mesh);
-// void mesh_data_init_3d(const int local_nx, const int local_ny,
-//                        const int local_nz, const int global_nx,
-//                        const int global_ny, const int global_nz, const int pad,
-//                        const int x_off, const int y_off, const int z_off,
-//                        const double width, const double height,
-//                        const double depth, double* edgex, double* edgey,
-//                        double* edgez, double* edgedx, double* edgedy,
-//                        double* edgedz, double* celldx, double* celldy,
-//                        double* celldz);
-
 // Deallocate all of the mesh memory
 void finalise_mesh(Mesh* mesh);
 

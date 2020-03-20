@@ -9,9 +9,6 @@
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
-// Reads a cross section file
-// void read_cs_file(const char* filename, CrossSection* cs, Mesh* mesh);
-
 // Initialises the set of cross sections
 void initialise_cross_sections(NeutralData* neutral_data, Mesh* mesh);
 
@@ -56,7 +53,7 @@ void initialise_neutral_data(NeutralData* neutral_data, Mesh* mesh) {
   mesh_edgey_0[0] = mesh->edgey[mesh->y_off + pad];
   mesh_edgex_1[0] = mesh->edgex[local_nx + mesh->x_off + pad];
   mesh_edgey_1[0] = mesh->edgey[local_ny + mesh->y_off + pad];
- 
+
 
   Kokkos::View<double*>::HostMirror rank_xpos_0;
   Kokkos::View<double*>::HostMirror rank_ypos_0;
@@ -86,15 +83,6 @@ void initialise_neutral_data(NeutralData* neutral_data, Mesh* mesh) {
   const double local_particle_height =
       max(0.0, (rank_ypos_1[0] - rank_ypos_0[0]) -
                    (local_particle_top_off + local_particle_bottom_off));
-
-#if 0
-  // TODO: breaks due to the copy buffer semantics for OpenMP 4, whole concept
-  // needs readdressing
-  free(rank_xpos_0);
-  free(rank_ypos_0);
-  free(rank_xpos_1);
-  free(rank_ypos_1);
-#endif // if 0
 
   // Calculate the number of particles we need based on the shaded area that
   // is covered by our source

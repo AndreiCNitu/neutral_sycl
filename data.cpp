@@ -19,7 +19,7 @@ size_t allocate_data(Kokkos::View<double*>* buf, size_t len) {
         local_buf[i] = 0.0;
     });
     Kokkos::fence();
-    
+
     return sizeof(double) * len;
 }
 
@@ -35,10 +35,9 @@ size_t allocate_float_data(Kokkos::View<float*>* buf, size_t len) {
         local_buf[i] = 0.0f;
     });
     Kokkos::fence();
-    
+
     return sizeof(float) * len;
 }
-
 
 size_t allocate_int_data(Kokkos::View<int*>* buf, size_t len) {
     if(len == 0) {
@@ -52,7 +51,7 @@ size_t allocate_int_data(Kokkos::View<int*>* buf, size_t len) {
         local_buf[i] = 0;
     });
     Kokkos::fence();
-    
+
     return sizeof(int) * len;
 }
 
@@ -68,7 +67,7 @@ size_t allocate_uint64_data(Kokkos::View<uint64_t*>* buf, size_t len) {
         local_buf[i] = 0;
     });
     Kokkos::fence();
-    
+
     return sizeof(uint64_t) * len;
 }
 
@@ -99,7 +98,7 @@ void allocate_host_data(Kokkos::View<double*>::HostMirror* buf, const size_t len
     }
 
     new(buf) Kokkos::View<double*>::HostMirror("host", len);
-    
+
     for (size_t ii = 0; ii < len; ++ii) {
         (*buf)[ii] = 1.0;
     }
@@ -112,7 +111,7 @@ void allocate_host_float_data(Kokkos::View<float*>::HostMirror* buf, const size_
     }
 
     new(buf) Kokkos::View<float*>::HostMirror("host", len);
-    
+
     for (size_t ii = 0; ii < len; ++ii) {
         (*buf)[ii] = 0.0f;
     }
@@ -124,7 +123,7 @@ void allocate_host_int_data(Kokkos::View<int*>::HostMirror* buf, const size_t le
     }
 
     new(buf) Kokkos::View<int*>::HostMirror("host", len);
-    
+
     for (size_t ii = 0; ii < len; ++ii) {
         (*buf)[ii] = 0;
     }
@@ -136,7 +135,7 @@ void allocate_host_uint64_t_data(Kokkos::View<uint64_t*>::HostMirror* buf, const
     }
 
     new(buf) Kokkos::View<uint64_t*>::HostMirror("host", len);
-    
+
     for (size_t ii = 0; ii < len; ++ii) {
         (*buf)[ii] = 0;
     }
@@ -285,9 +284,9 @@ void set_problem_2d(const int local_nx, const int local_ny, const int pad,
         double global_ypos = edgey[ii];
 
         // Check we are in bounds of the problem entry
-        if (global_xpos >= xpos && 
-            global_ypos >= ypos && 
-            global_xpos < xpos + width && 
+        if (global_xpos >= xpos &&
+            global_ypos >= ypos &&
+            global_xpos < xpos + width &&
             global_ypos < ypos + height) {
 
             // The upper bound excludes the bounding box for the entry

@@ -7,12 +7,6 @@
 #include "mesh.h"
 #include "rand.h"
 
-#if 0
-#ifdef MPI
-#include "mpi.h"
-#endif
-#endif // if 0
-
 /* Problem-Independent Constants */
 #define eV_TO_J 1.60217646e-19           // 1 eV to Joules
 #define AVOGADROS 6.02214085774e23       // Avogadro's constant
@@ -84,13 +78,5 @@ typedef struct {
 
 // Initialises all of the Neutral-specific data structures.
 void initialise_neutral_data(NeutralData* neutral_data, Mesh* mesh);
-
-
-#if 0
-#ifdef MPI
-// Global MPI particle type
-MPI_Datatype particle_type;
-#endif
-#endif // if 0
 
 #endif

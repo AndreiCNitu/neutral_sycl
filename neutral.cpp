@@ -60,7 +60,7 @@ struct handle_particles {
   handle_particles(const int global_nx, const int global_ny, const int nx,
                     const int ny, const uint64_t master_key, const int pad,
                     const int x_off, const int y_off, const int initial,
-                    const double dt, 
+                    const double dt,
                     const int* neighbours,
                     Kokkos::View<const double *> density,
                     Kokkos::View<const double *> edgex,
@@ -81,7 +81,7 @@ struct handle_particles {
     neighbours(neighbours), density(density), edgex(edgex), edgey(edgey),
     edgedx(edgedx), edgedy(edgedy), ntotal_particles(ntotal_particles),
     particles_start(particles_start),
-    cs_scatter_keys(cs_scatter_keys),  cs_scatter_values(cs_scatter_values), 
+    cs_scatter_keys(cs_scatter_keys),  cs_scatter_values(cs_scatter_values),
     cs_scatter_nentries(cs_scatter_nentries), cs_absorb_keys(cs_absorb_keys),
     cs_absorb_values(cs_absorb_values), cs_absorb_nentries(cs_absorb_nentries),
     energy_deposition_tally(energy_deposition_tally) {}
@@ -120,10 +120,10 @@ struct handle_particles {
 
           // Fetch the cross sections and prepare related quantities
           double microscopic_cs_scatter = microscopic_cs_for_energy(
-              cs_scatter_keys, cs_scatter_values, cs_scatter_nentries, 
+              cs_scatter_keys, cs_scatter_values, cs_scatter_nentries,
               particle->energy, &scatter_cs_index);
           double microscopic_cs_absorb = microscopic_cs_for_energy(
-              cs_absorb_keys, cs_absorb_values, cs_absorb_nentries, 
+              cs_absorb_keys, cs_absorb_values, cs_absorb_nentries,
               particle->energy, &absorb_cs_index);
           double number_density = (local_density * AVOGADROS / MOLAR_MASS);
           double macroscopic_cs_scatter =
@@ -173,7 +173,7 @@ struct handle_particles {
               result = collision_event(
                   global_nx, nx, x_off, y_off, pid, master_key,
                   inv_ntotal_particles, distance_to_collision, local_density,
-                  cs_scatter_keys, cs_scatter_values, cs_scatter_nentries, cs_absorb_keys, 
+                  cs_scatter_keys, cs_scatter_values, cs_scatter_nentries, cs_absorb_keys,
                   cs_absorb_values, cs_absorb_nentries, particle, &counter,
                   &energy_deposition, &number_density, &microscopic_cs_scatter,
                   &microscopic_cs_absorb, &macroscopic_cs_scatter,
@@ -236,7 +236,7 @@ struct handle_particles {
 // Performs a solve of dependent variables for particle transport
 void solve_transport_2d(
     const int nx, const int ny, const int global_nx, const int global_ny,
-    const uint64_t master_key, const int pad, const int x_off, const int y_off, 
+    const uint64_t master_key, const int pad, const int x_off, const int y_off,
     const double dt, const int ntotal_particles,
     int* nparticles,
     const int* neighbours,
@@ -296,11 +296,11 @@ inline int collision_event(
     const uint64_t pkey, const uint64_t master_key,
     const double inv_ntotal_particles, const double distance_to_collision,
     const double local_density,
-    Kokkos::View<const double *> cs_scatter_keys, 
+    Kokkos::View<const double *> cs_scatter_keys,
     Kokkos::View<const double *> cs_scatter_values,
-    const int cs_scatter_nentries, 
+    const int cs_scatter_nentries,
     Kokkos::View<const double *> cs_absorb_keys,
-    Kokkos::View<const double *> cs_absorb_values, 
+    Kokkos::View<const double *> cs_absorb_values,
     const int cs_absorb_nentries,
     Particle* particle,
     uint64_t* counter,
@@ -521,7 +521,7 @@ inline void update_tallies(const int nx, const int x_off, const int y_off,
   const int celly = particle->celly - y_off;
 
 
-      energy_deposition_tally[celly * nx + cellx] += 
+      energy_deposition_tally[celly * nx + cellx] +=
         energy_deposition*inv_ntotal_particles;
 }
 
@@ -602,7 +602,7 @@ inline double calculate_energy_deposition(
 }
 
 // Fetch the cross section for a particular energy value
-inline double microscopic_cs_for_energy(Kokkos::View<const double *> keys, 
+inline double microscopic_cs_for_energy(Kokkos::View<const double *> keys,
                                  Kokkos::View<const double *> values,
                                  const int nentries,
                                  const double energy,
@@ -626,9 +626,6 @@ inline double microscopic_cs_for_energy(Kokkos::View<const double *> keys,
 void validate(const int nx, const int ny, const char* params_filename,
               const int rank, Kokkos::View<double* > energy_deposition_tally) {
 
-  // Reduce the entire energy deposition tally locally
-  // RAJA::ReduceSum<reduce_policy, double> local_energy_tally(0.0);
- 
   double local_energy_tally = 0.0;
 
   Kokkos::parallel_reduce(nx * ny, KOKKOS_LAMBDA (int ii, double &tmp)

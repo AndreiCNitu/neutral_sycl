@@ -9,19 +9,18 @@
 #ifdef MPI
 #include "mpi.h"
 #endif
-#define MASTER 0 
+#define MASTER 0
 
 int main(int argc, char *argv[])
 {
   if (argc != 2) {
     TERMINATE("usage: ./neutral.exe <param_file>\n");
   }
-  
+
   int rank = MASTER;
   int nranks = 1;
 
   initialise_mpi(argc, argv, &rank, &nranks);
-
 
 
   Kokkos::initialize();
@@ -65,12 +64,12 @@ int main(int argc, char *argv[])
   initialise_comms(&mesh);
   initialise_mesh_2d(&mesh);
   SharedData shared_data;
-  initialise_shared_data_2d(mesh.local_nx, mesh.local_ny, mesh.pad, mesh.width, 
+  initialise_shared_data_2d(mesh.local_nx, mesh.local_ny, mesh.pad, mesh.width,
       mesh.height, neutral_data.neutral_params_filename, mesh.edgex, mesh.edgey, &shared_data);
 
   handle_boundary_2d(mesh.local_nx, mesh.local_ny, &mesh, shared_data.density,
                      NO_INVERT, PACK);
- 
+
   initialise_neutral_data(&neutral_data, &mesh);
 
   // Make sure initialisation phase is complete
@@ -85,11 +84,6 @@ int main(int argc, char *argv[])
     if (mesh.rank == MASTER) {
       printf("\nIteration  %d\n", tt);
     }
-
-    // if (visit_dump) {
-    //   plot_particle_density(&neutral_data, &mesh, tt, neutral_data.nparticles,
-    //                         elapsed_sim_time);
-    // }
 
     uint64_t facet_events = 0;
     uint64_t collision_events = 0;
@@ -123,18 +117,6 @@ int main(int argc, char *argv[])
 
     elapsed_sim_time += mesh.dt;
 
-    // if (visit_dump) {
-    //   char tally_name[100];
-    //   sprintf(tally_name, "energy%d", tt);
-    //   int dneighbours[NNEIGHBOURS] = {EDGE, EDGE, EDGE, EDGE, EDGE, EDGE};
-    //   write_all_ranks_to_visit(
-    //       mesh.global_nx, mesh.global_ny, mesh.local_nx - 2 * mesh.pad,
-    //       mesh.local_ny - 2 * mesh.pad, mesh.pad, mesh.x_off, mesh.y_off,
-    //       mesh.rank, mesh.nranks, dneighbours,
-    //       neutral_data.energy_deposition_tally, tally_name, 0,
-    //       elapsed_sim_time);
-    // }
-
     // Leave the simulation if we have reached the simulation end time
     if (elapsed_sim_time >= mesh.sim_end) {
       if (mesh.rank == MASTER)
@@ -158,38 +140,4 @@ int main(int argc, char *argv[])
   Kokkos::finalize();
 
   return 0;
-}
-
-// This is a bit hacky and temporary for now
-void plot_particle_density(NeutralData* neutral_data, Mesh* mesh, const int tt,
-                           const int nparticles,
-                           const double elapsed_sim_time) {
-//   double* temp =
-//       (double*)malloc(sizeof(double) * mesh->local_nx * mesh->local_ny);
-//   if (!temp) {
-//     TERMINATE("Could not allocate data for printing.\n");
-//   }
-
-//   for (int ii = 0; ii < nparticles; ++ii) {
-//     Particle* particle = &neutral_data->local_particles[ii];
-// #ifdef SoA
-//     const int cellx = particle->cellx[ii] - mesh->x_off;
-//     const int celly = particle->celly[ii] - mesh->y_off;
-// #else
-//     const int cellx = particle->cellx - mesh->x_off;
-//     const int celly = particle->celly - mesh->y_off;
-// #endif
-//     temp[celly * (mesh->local_nx - 2 * mesh->pad) + cellx] += 1.0;
-//   }
-
-//   // Dummy neighbours that stops any padding from happening
-//   int neighbours[NNEIGHBOURS] = {EDGE, EDGE, EDGE, EDGE, EDGE, EDGE};
-//   char particles_name[100];
-//   sprintf(particles_name, "particles%d", tt);
-//   write_all_ranks_to_visit(
-//       mesh->global_nx, mesh->global_ny, mesh->local_nx - 2 * mesh->pad,
-//       mesh->local_ny - 2 * mesh->pad, mesh->pad, mesh->x_off, mesh->y_off,
-//       mesh->rank, mesh->nranks, neighbours, temp, particles_name, 0,
-//       elapsed_sim_time);
-//   free(temp);
 }
