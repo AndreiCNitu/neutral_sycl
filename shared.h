@@ -59,9 +59,6 @@ extern struct Profile comms_profile;
 extern "C" {
 #endif
 
-// Initialises devices in implementation-specific manner
-void initialise_devices(int rank);
-
 // Allocation and deallocation routines (these need templating away)
 size_t allocate_data(Kokkos::View<double*>* buf, size_t len);
 size_t allocate_float_data(Kokkos::View<float*>* buf, size_t len);

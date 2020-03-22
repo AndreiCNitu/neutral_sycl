@@ -60,7 +60,6 @@ int main(int argc, char *argv[])
 #endif
 
   // Perform the general initialisation steps for the mesh etc
-  initialise_devices(mesh.rank);
   initialise_comms(&mesh);
   initialise_mesh_2d(&mesh);
   SharedData shared_data;
