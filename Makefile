@@ -32,7 +32,7 @@ TARGET=CPU
 endif
 
 ifeq ($(TARGET), GPU)
-CXX = $(NVCC_WRAPPER)
+CXX = nvcc_wrapper
 endif
 
 OBJ = main.o params.o profiler.o comms.o shared.o data.o mesh.o shared_data.o halos.o neutral.o neutral_data.o
