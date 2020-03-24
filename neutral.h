@@ -15,7 +15,7 @@ inline int facet_event(const int global_nx, const int global_ny, const int nx,
                 double* microscopic_cs_absorb,
                 double* macroscopic_cs_scatter,
                 double* macroscopic_cs_absorb,
-                Kokkos::View<double *, Kokkos::MemoryTraits<Kokkos::Atomic>> energy_deposition_tally,
+                Kokkos::View<double *> energy_deposition_tally,
                 int* cellx,
                 int* celly,
                 double* local_density);
@@ -40,7 +40,7 @@ inline int collision_event(
     double* microscopic_cs_absorb,
     double* macroscopic_cs_scatter,
     double* macroscopic_cs_absorb,
-    Kokkos::View<double *, Kokkos::MemoryTraits<Kokkos::Atomic>> energy_deposition_tally,
+    Kokkos::View<double *> energy_deposition_tally,
     int* scatter_cs_index,
     int* absorb_cs_index,
     double rn[NRANDOM_NUMBERS],
@@ -55,14 +55,14 @@ inline void census_event(const int global_nx, const int nx, const int x_off,
                   double* number_density,
                   double* microscopic_cs_scatter,
                   double* microscopic_cs_absorb,
-                  Kokkos::View<double *, Kokkos::MemoryTraits<Kokkos::Atomic>> energy_deposition_tally);
+                  Kokkos::View<double *> energy_deposition_tally);
 
 // Tallies the energy deposition in the cell
 inline void update_tallies(const int nx, const int x_off, const int y_off,
                                 Particle* particle,
                                 const double inv_ntotal_particles,
                                 const double energy_deposition,
-                                Kokkos::View<double *, Kokkos::MemoryTraits<Kokkos::Atomic>> energy_deposition_tally);
+                                Kokkos::View<double *> energy_deposition_tally);
 
 // // Calculate the distance to the next facet
 inline void calc_distance_to_facet(const int global_nx, const double x, const double y,
