@@ -8,9 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <Kokkos_Core.hpp>
-#include <Kokkos_Parallel.hpp>
-#include <Kokkos_View.hpp>
+#include <CL/sycl.hpp>
 
 #define ARCH_PARAMS "arch.params"
 #define ENABLE_VISIT_DUMPS 1 // Enables visit dumps
@@ -60,33 +58,26 @@ extern "C" {
 #endif
 
 // Allocation and deallocation routines (these need templating away)
-size_t allocate_data(Kokkos::View<double*>* buf, size_t len);
-size_t allocate_float_data(Kokkos::View<float*>* buf, size_t len);
-size_t allocate_int_data(Kokkos::View<int*>* buf, size_t len);
-size_t allocate_uint64_data(Kokkos::View<uint64_t*>* buf, const size_t len);
+size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, size_t len);
+size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, double* h_buf, size_t len);
+size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>* buf, size_t len);
+size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, size_t len);
+size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, int* h_buf, size_t len);
+size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>* buf, const size_t len);
 
-void allocate_host_data(Kokkos::View<double*>::HostMirror* buf, size_t len);
-void allocate_host_float_data(Kokkos::View<float*>::HostMirror* buf, size_t len);
-void allocate_host_int_data(Kokkos::View<int*>::HostMirror* buf, size_t len);
-void allocate_host_uint64_data(Kokkos::View<uint64_t*>::HostMirror* buf, size_t len);
+void allocate_host_data(double* buf, size_t len);
+void allocate_host_float_data(float* buf, size_t len);
+void allocate_host_int_data(int* buf, size_t len);
+void allocate_host_uint64_data(uint64_t* buf, size_t len);
 
-void deallocate_data(Kokkos::View<double*> buf);
-void deallocate_float_data(Kokkos::View<float*> buf);
-void deallocate_int_data(Kokkos::View<int*> buf);
-void deallocate_uint64_t_data(Kokkos::View<uint64_t*> buf);
-
-void deallocate_host_data(Kokkos::View<double*>::HostMirror buf);
-void deallocate_host_float_data(Kokkos::View<float*>::HostMirror buf);
-void deallocate_host_int_data(Kokkos::View<int*>::HostMirror buf);
-void deallocate_host_uint64_t_data(Kokkos::View<uint64_t*>::HostMirror buf);
-
-void copy_buffer_SEND(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst);
-void copy_float_buffer_SEND(const size_t len, Kokkos::View<float*>::HostMirror* src, Kokkos::View<float*>* dst);
-void copy_int_buffer_SEND(const size_t len, Kokkos::View<int*>::HostMirror* src, Kokkos::View<int*>* dst);
-
-void copy_buffer_RECEIVE(const size_t len, Kokkos::View<double*>* src, Kokkos::View<double*>::HostMirror* dst);
-
-void move_host_buffer_to_device(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst);
+// TODO 
+// void copy_buffer_SEND(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst);
+// void copy_float_buffer_SEND(const size_t len, Kokkos::View<float*>::HostMirror* src, Kokkos::View<float*>* dst);
+// void copy_int_buffer_SEND(const size_t len, Kokkos::View<int*>::HostMirror* src, Kokkos::View<int*>* dst);
+//
+// void copy_buffer_RECEIVE(const size_t len, Kokkos::View<double*>* src, Kokkos::View<double*>::HostMirror* dst);
+//
+// void move_host_buffer_to_device(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst);
 
 // Write out data for visualisation in visit
 void write_to_visit(const int nx, const int ny, const int x_off,

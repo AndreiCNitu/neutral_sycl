@@ -1,9 +1,7 @@
 #ifndef __MESHHDR
 #define __MESHHDR
 
-#include <Kokkos_Core.hpp>
-#include <Kokkos_Parallel.hpp>
-#include <Kokkos_View.hpp>
+#include <CL/sycl.hpp>
 
 /* Problem-Independent Constants */
 #define LOAD_BALANCE 0 // Whether decomposition should attempt to load balance
@@ -33,17 +31,18 @@ typedef struct {
   int pad;
 
   // Mesh differentials
-  Kokkos::View<double *> edgex;
-  Kokkos::View<double *> edgey;
-  Kokkos::View<double *> edgez;
 
-  Kokkos::View<double *> edgedx;
-  Kokkos::View<double *> edgedy;
-  Kokkos::View<double *> edgedz;
+  cl::sycl::buffer<double, 1>* edgex;
+  cl::sycl::buffer<double, 1>* edgey;
+  cl::sycl::buffer<double, 1>* edgez;
 
-  Kokkos::View<double *> celldx;
-  Kokkos::View<double *> celldy;
-  Kokkos::View<double *> celldz;
+  cl::sycl::buffer<double, 1>* edgedx;
+  cl::sycl::buffer<double, 1>* edgedy;
+  cl::sycl::buffer<double, 1>* edgedz;
+
+  cl::sycl::buffer<double, 1>* celldx;
+  cl::sycl::buffer<double, 1>* celldy;
+  cl::sycl::buffer<double, 1>* celldz;
 
   // Offset in global mesh of rank owning this local mesh
   int x_off;
@@ -65,46 +64,48 @@ typedef struct {
   int ndims;                   // The number of dimensions
 
   // Buffers for MPI communication
-  Kokkos::View<double *> north_buffer_out;
-  Kokkos::View<double *> east_buffer_out;
-  Kokkos::View<double *> south_buffer_out;
-  Kokkos::View<double *> west_buffer_out;
-  Kokkos::View<double *> front_buffer_out;
-  Kokkos::View<double *> back_buffer_out;
-  Kokkos::View<double *> north_buffer_in;
-  Kokkos::View<double *> east_buffer_in;
-  Kokkos::View<double *> south_buffer_in;
-  Kokkos::View<double *> west_buffer_in;
-  Kokkos::View<double *> front_buffer_in;
-  Kokkos::View<double *> back_buffer_in;
+  cl::sycl::buffer<double, 1>* north_buffer_out;
+  cl::sycl::buffer<double, 1>* east_buffer_out;
+  cl::sycl::buffer<double, 1>* south_buffer_out;
+  cl::sycl::buffer<double, 1>* west_buffer_out;
+  cl::sycl::buffer<double, 1>* front_buffer_out;
+  cl::sycl::buffer<double, 1>* back_buffer_out;
+  cl::sycl::buffer<double, 1>* north_buffer_in;
+  cl::sycl::buffer<double, 1>* east_buffer_in;
+  cl::sycl::buffer<double, 1>* south_buffer_in;
+  cl::sycl::buffer<double, 1>* west_buffer_in;
+  cl::sycl::buffer<double, 1>* front_buffer_in;
+  cl::sycl::buffer<double, 1>* back_buffer_in;
 
   // Host copies of buffers for MPI communication
   // Note that these are only allocated when the model requires them, e.g. CUDA
-  Kokkos::View<double *>::HostMirror h_north_buffer_out;
-  Kokkos::View<double *>::HostMirror h_east_buffer_out;
-  Kokkos::View<double *>::HostMirror h_south_buffer_out;
-  Kokkos::View<double *>::HostMirror h_west_buffer_out;
-  Kokkos::View<double *>::HostMirror h_front_buffer_out;
-  Kokkos::View<double *>::HostMirror h_back_buffer_out;
-  Kokkos::View<double *>::HostMirror h_north_buffer_in;
-  Kokkos::View<double *>::HostMirror h_east_buffer_in;
-  Kokkos::View<double *>::HostMirror h_south_buffer_in;
-  Kokkos::View<double *>::HostMirror h_west_buffer_in;
-  Kokkos::View<double *>::HostMirror h_front_buffer_in;
-  Kokkos::View<double *>::HostMirror h_back_buffer_in;
+  double* h_north_buffer_out;
+  double* h_east_buffer_out;
+  double* h_south_buffer_out;
+  double* h_west_buffer_out;
+  double* h_front_buffer_out;
+  double* h_back_buffer_out;
+  double* h_north_buffer_in;
+  double* h_east_buffer_in;
+  double* h_south_buffer_in;
+  double* h_west_buffer_in;
+  double* h_front_buffer_in;
+  double* h_back_buffer_in;
 } Mesh;
 
 // Initialises the mesh
-void initialise_mesh_2d(Mesh* mesh);
-void mesh_data_init_2d(const int local_nx, const int local_ny,
+void initialise_mesh_2d(cl::sycl::queue queue, Mesh* mesh);
+void mesh_data_init_2d(cl::sycl::queue queue,
+                       const int local_nx, const int local_ny,
                        const int global_nx, const int global_ny, const int pad,
                        const int x_off, const int y_off, const double width,
-                       const double height, Kokkos::View<double *> edgex, Kokkos::View<double *> edgey,
-                       Kokkos::View<double *> edgedx, Kokkos::View<double *> edgedy, Kokkos::View<double *> celldx,
-                       Kokkos::View<double *> celldy);
+                       const double height, cl::sycl::buffer<double, 1>* edgex, cl::sycl::buffer<double, 1>* edgey,
+                       cl::sycl::buffer<double, 1>* edgedx, cl::sycl::buffer<double, 1>* edgedy,
+                       cl::sycl::buffer<double, 1>* celldx, cl::sycl::buffer<double, 1>* celldy);
 
+// TODO
 // Deallocate all of the mesh memory
-void finalise_mesh(Mesh* mesh);
+// void finalise_mesh(Mesh* mesh);
 
 #ifdef __cplusplus
 }

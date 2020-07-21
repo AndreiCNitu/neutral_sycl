@@ -20,218 +20,8 @@
 #define MASTER_KEY_OFF (1000000000000000ULL)
 #define PARTICLE_KEY_OFF (10000ULL)
 
-
-// Handles the current active batch of particles
-struct handle_particles {
-
-  typedef struct {
-    uint64_t facets;
-    uint64_t collisions;
-    uint64_t nparticles;
-  } value_type;
-
-  const int global_nx;
-  const int global_ny;
-  const int nx;
-  const int ny;
-  const uint64_t master_key;
-  const int pad;
-  const int x_off;
-  const int y_off;
-  const int initial;
-  const double dt;
-  const int* neighbours;
-  Kokkos::View<const double *> density;
-  Kokkos::View<const double *> edgex;
-  Kokkos::View<const double *> edgey;
-  Kokkos::View<const double *> edgedx;
-  Kokkos::View<const double *> edgedy;
-  const int ntotal_particles;
-  Kokkos::View<Particle* > particles_start;
-  const Kokkos::View<double *>  energy_deposition_tally;
-
-  Kokkos::View<const double *> cs_scatter_keys;
-  Kokkos::View<const double *> cs_scatter_values;
-  const int cs_scatter_nentries;
-  const Kokkos::View<double *> cs_absorb_keys;
-  const Kokkos::View<double *> cs_absorb_values;
-  const int cs_absorb_nentries;
-
-  handle_particles(const int global_nx, const int global_ny, const int nx,
-                    const int ny, const uint64_t master_key, const int pad,
-                    const int x_off, const int y_off, const int initial,
-                    const double dt,
-                    const int* neighbours,
-                    Kokkos::View<const double *> density,
-                    Kokkos::View<const double *> edgex,
-                    Kokkos::View<const double *> edgey,
-                    Kokkos::View<const double *> edgedx,
-                    Kokkos::View<const double *> edgedy,
-                    const int ntotal_particles,
-                    Kokkos::View<Particle* > particles_start,
-                    const Kokkos::View<double *> cs_scatter_keys,
-                    const Kokkos::View<double *> cs_scatter_values,
-                    const int cs_scatter_nentries,
-                    const Kokkos::View<double *> cs_absorb_keys,
-                    const Kokkos::View<double *> cs_absorb_values,
-                    const int cs_absorb_nentries,
-                    const Kokkos::View<double *>  energy_deposition_tally):
-    global_nx(global_nx), global_ny(global_ny), nx(nx), ny(ny), master_key(master_key),
-    pad(pad), x_off(x_off), y_off(y_off), initial(initial), dt(dt),
-    neighbours(neighbours), density(density), edgex(edgex), edgey(edgey),
-    edgedx(edgedx), edgedy(edgedy), ntotal_particles(ntotal_particles),
-    particles_start(particles_start),
-    cs_scatter_keys(cs_scatter_keys),  cs_scatter_values(cs_scatter_values),
-    cs_scatter_nentries(cs_scatter_nentries), cs_absorb_keys(cs_absorb_keys),
-    cs_absorb_values(cs_absorb_values), cs_absorb_nentries(cs_absorb_nentries),
-    energy_deposition_tally(energy_deposition_tally) {}
-
-
-
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const int pid, value_type& reduction_result) const {
-
-        int result = PARTICLE_CONTINUE;
-
-        // (1) particle can stream and reach census
-        // (2) particle can collide and either
-        //      - the particle will be absorbed
-        //      - the particle will scatter (this means the energy changes)
-        // (3) particle encounters boundary region, transports to another cell
-
-        // Current particle
-        Particle* particle = &particles_start[pid];
-
-        const uint64_t pkey = pid;
-
-        if (!particle->dead) {
-
-          reduction_result.nparticles += 1;
-
-          int x_facet = 0;
-          int absorb_cs_index = -1;
-          int scatter_cs_index = -1;
-          double cell_mfp = 0.0;
-
-          // Determine the current cell
-          int cellx = particle->cellx - x_off + pad;
-          int celly = particle->celly - y_off + pad;
-          double local_density = density[celly * (nx + 2 * pad) + cellx];
-
-          // Fetch the cross sections and prepare related quantities
-          double microscopic_cs_scatter = microscopic_cs_for_energy(
-              cs_scatter_keys, cs_scatter_values, cs_scatter_nentries,
-              particle->energy, &scatter_cs_index);
-          double microscopic_cs_absorb = microscopic_cs_for_energy(
-              cs_absorb_keys, cs_absorb_values, cs_absorb_nentries,
-              particle->energy, &absorb_cs_index);
-          double number_density = (local_density * AVOGADROS / MOLAR_MASS);
-          double macroscopic_cs_scatter =
-              number_density * microscopic_cs_scatter * BARNS;
-          double macroscopic_cs_absorb =
-              number_density * microscopic_cs_absorb * BARNS;
-          double speed =
-              sqrt((2.0 * particle->energy * eV_TO_J) / PARTICLE_MASS);
-          double energy_deposition = 0.0;
-
-          const double inv_ntotal_particles = 1.0 / (double)ntotal_particles;
-
-          uint64_t counter = 0;
-          double rn[NRANDOM_NUMBERS];
-
-          // Set time to census and MFPs until collision, unless travelled
-          // particle
-          if (initial) {
-            particle->dt_to_census = dt;
-            generate_random_numbers(pkey, master_key, counter++, &rn[0], &rn[1]);
-            particle->mfp_to_collision = -log(rn[0]) / macroscopic_cs_scatter;
-          }
-
-          // Loop until we have reached census
-          while (particle->dt_to_census > 0.0) {
-            cell_mfp = 1.0 / (macroscopic_cs_scatter + macroscopic_cs_absorb);
-
-            // Work out the distance until the particle hits a facet
-            double distance_to_facet = 0.0;
-            calc_distance_to_facet(
-                global_nx, particle->x, particle->y, pad, x_off, y_off,
-                particle->omega_x, particle->omega_y, speed, particle->cellx,
-                particle->celly, &distance_to_facet, &x_facet, edgex, edgey);
-
-            const double distance_to_collision =
-                particle->mfp_to_collision * cell_mfp;
-            const double distance_to_census = speed * particle->dt_to_census;
-
-            // Check if our next event is a collision
-            if (distance_to_collision < distance_to_facet &&
-                distance_to_collision < distance_to_census) {
-
-              // Track the total number of collisions
-              reduction_result.collisions += 1;
-
-              // Handles a collision event
-              result = collision_event(
-                  global_nx, nx, x_off, y_off, pid, master_key,
-                  inv_ntotal_particles, distance_to_collision, local_density,
-                  cs_scatter_keys, cs_scatter_values, cs_scatter_nentries, cs_absorb_keys,
-                  cs_absorb_values, cs_absorb_nentries, particle, &counter,
-                  &energy_deposition, &number_density, &microscopic_cs_scatter,
-                  &microscopic_cs_absorb, &macroscopic_cs_scatter,
-                  &macroscopic_cs_absorb, energy_deposition_tally,
-                  &scatter_cs_index, &absorb_cs_index, rn, &speed);
-
-              if (result != PARTICLE_CONTINUE) {
-                break;
-              }
-            }
-            // Check if we have reached facet
-            else if (distance_to_facet < distance_to_census) {
-
-              // Track the number of fact encounters
-              reduction_result.facets += 1;
-
-              result = facet_event(
-                  global_nx, global_ny, nx, ny, x_off, y_off,
-                  inv_ntotal_particles, distance_to_facet, speed, cell_mfp,
-                  x_facet, density, neighbours, particle, &energy_deposition,
-                  &number_density, &microscopic_cs_scatter,
-                  &microscopic_cs_absorb, &macroscopic_cs_scatter,
-                  &macroscopic_cs_absorb, energy_deposition_tally, &cellx,
-                  &celly, &local_density);
-
-              if (result != PARTICLE_CONTINUE) {
-                break;
-              }
-
-            } else {
-
-              census_event(global_nx, nx, x_off, y_off, inv_ntotal_particles,
-                           distance_to_census, cell_mfp, particle,
-                           &energy_deposition, &number_density,
-                           &microscopic_cs_scatter, &microscopic_cs_absorb,
-                           energy_deposition_tally);
-
-              break;
-            }
-          }
-        }
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  void join(volatile value_type& update, const volatile value_type& input) const {
-    update.facets += input.facets;
-    update.collisions += input.collisions;
-    update.nparticles += input.nparticles;
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  void init(value_type& val) const {
-    val.facets = 0;
-    val.collisions = 0;
-    val.nparticles = 0;
-  }
-
-};
+class inject_particles_kernel;
+class solve_transport_2d_kernel;
 
 // Performs a solve of dependent variables for particle transport
 void solve_transport_2d(
@@ -240,54 +30,187 @@ void solve_transport_2d(
     const double dt, const int ntotal_particles,
     int* nparticles,
     const int* neighbours,
-    Kokkos::View<Particle* > particles,
-    Kokkos::View<const double *> density,
-    Kokkos::View<const double *> edgex,
-    Kokkos::View<const double *> edgey,
-    Kokkos::View<const double *> edgedx,
-    Kokkos::View<const double *> edgedy,
+    cl::sycl::buffer<Particle, 1>* particles,
+    cl::sycl::buffer<double, 1>* density,
+    cl::sycl::buffer<double, 1>* edgex,
+    cl::sycl::buffer<double, 1>* edgey,
     CrossSection* cs_scatter_table,
     CrossSection* cs_absorb_table,
-    const Kokkos::View<double *> energy_deposition_tally,
-    Kokkos::View<uint64_t *> reduce_array0,
-    Kokkos::View<uint64_t *> reduce_array1,
-    Kokkos::View<uint64_t *> reduce_array2,
+    cl::sycl::buffer<double, 1>* energy_deposition_tally,
     uint64_t* facet_events,
-    uint64_t* collision_events) {
+    uint64_t* collision_events,
+    cl::sycl::queue queue) {
 
   if (!(*nparticles)) {
     printf("Out of particles\n");
     return;
   }
 
-  // Reduction struct
-  handle_particles::value_type result;
+  // Reduction struct .... TODO?
+  // handle_particles::value_type result;
 
-  const Kokkos::View<double *> cs_scatter_keys = cs_scatter_table->keys;
-  const Kokkos::View<double *> cs_scatter_values = cs_scatter_table->values;
+  cl::sycl::buffer<double, 1>* cs_scatter_keys = cs_scatter_table->keys;
+  cl::sycl::buffer<double, 1>* cs_scatter_values = cs_scatter_table->values;
   const int cs_scatter_nentries = cs_scatter_table->nentries;
-  const Kokkos::View<double *> cs_absorb_keys = cs_absorb_table->keys;
-  const Kokkos::View<double *> cs_absorb_values = cs_absorb_table->values;
+  cl::sycl::buffer<double, 1>* cs_absorb_keys = cs_absorb_table->keys;
+  cl::sycl::buffer<double, 1>* cs_absorb_values = cs_absorb_table->values;
   const int cs_absorb_nentries = cs_absorb_table->nentries;
 
+  queue.submit([&] (cl::sycl::handler& cgh) {
+    // TODO: different access modifiers?
+    auto particles_acc = particles->get_access<cl::sycl::access::mode::read_write>(cgh);
+    // TODO name
+    auto energy_deposition_tally_acc = energy_deposition_tally->get_access<cl::sycl::access::mode::read_write>(cgh);
+
+    // TODO the 3 reduction arrays, after validation is passed!
+
+    auto density_acc = density->get_access<cl::sycl::access::mode::read>(cgh);
+    auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
+    auto edgey_acc = edgey->get_access<cl::sycl::access::mode::read>(cgh);
+
+    auto cs_scatter_keys_acc = cs_scatter_keys->get_access<cl::sycl::access::mode::read>(cgh);
+    auto cs_scatter_values_acc = cs_scatter_values->get_access<cl::sycl::access::mode::read>(cgh);
+    auto cs_absorb_keys_acc = cs_absorb_keys->get_access<cl::sycl::access::mode::read>(cgh);
+    auto cs_absorb_values_acc = cs_absorb_values->get_access<cl::sycl::access::mode::read>(cgh);
+
+    cgh.parallel_for<class solve_transport_2d_kernel>(cl::sycl::range<1>(*nparticles), [=](cl::sycl::nd_item<1> item) {
+
+      int result = PARTICLE_CONTINUE;
+
+      // (1) particle can stream and reach census
+      // (2) particle can collide and either
+      //      - the particle will be absorbed
+      //      - the particle will scatter (this means the energy changes)
+      // (3) particle encounters boundary region, transports to another cell
+
+      cl::sycl::id<1> idx = item.get_global_id(); // TODO: might not work everywhere
+
+      if (!particles_acc[idx].dead) {
+
+        // TODO reduction_result.nparticles += 1;
+
+        int x_facet = 0;
+        int absorb_cs_index = -1;
+        int scatter_cs_index = -1;
+        double cell_mfp = 0.0;
+
+        // Determine the current cell
+        int cellx = particles_acc[idx].cellx - x_off + pad;
+        int celly = particles_acc[idx].celly - y_off + pad;
+        double local_density = density_acc[celly * (nx + 2 * pad) + cellx];
+
+        // Fetch the cross sections and prepare related quantities
+        double microscopic_cs_scatter = microscopic_cs_for_energy(
+            cs_scatter_keys_acc, cs_scatter_values_acc, cs_scatter_nentries,
+            particles_acc[idx].energy, &scatter_cs_index);
+        double microscopic_cs_absorb = microscopic_cs_for_energy(
+            cs_absorb_keys_acc, cs_absorb_values_acc, cs_absorb_nentries,
+            particles_acc[idx].energy, &absorb_cs_index);
+        double number_density = (local_density * AVOGADROS / MOLAR_MASS);
+        double macroscopic_cs_scatter =
+            number_density * microscopic_cs_scatter * BARNS;
+        double macroscopic_cs_absorb =
+            number_density * microscopic_cs_absorb * BARNS;
+        double speed =
+            sqrt((2.0 * particles_acc[idx].energy * eV_TO_J) / PARTICLE_MASS);
+        double energy_deposition = 0.0;
+
+        const double inv_ntotal_particles = 1.0 / (double)ntotal_particles;
+
+        uint64_t counter = 0;
+        double rn[NRANDOM_NUMBERS];
+
+        // Set time to census and MFPs until collision
+        particles_acc[idx].dt_to_census = dt;
+        generate_random_numbers(idx[0], master_key, counter++, &rn[0], &rn[1]);
+        particles_acc[idx].mfp_to_collision = -log(rn[0]) / macroscopic_cs_scatter;
+
+        // Loop until we have reached census
+        while (particles_acc[idx].dt_to_census > 0.0) {
+          cell_mfp = 1.0 / (macroscopic_cs_scatter + macroscopic_cs_absorb);
+
+          // Work out the distance until the particle hits a facet
+          double distance_to_facet = 0.0;
+          calc_distance_to_facet(
+              global_nx, particles_acc[idx].x, particles_acc[idx].y, pad, x_off, y_off,
+              particles_acc[idx].omega_x, particles_acc[idx].omega_y, speed, particles_acc[idx].cellx,
+              particles_acc[idx].celly, &distance_to_facet, &x_facet, edgex_acc, edgey_acc);
+
+          const double distance_to_collision =
+              particles_acc[idx].mfp_to_collision * cell_mfp;
+          const double distance_to_census = speed * particles_acc[idx].dt_to_census;
+
+          // Check if our next event is a collision
+          if (distance_to_collision < distance_to_facet &&
+              distance_to_collision < distance_to_census) {
+
+            // Track the total number of collisions
+            // TODO reduction_result.collisions += 1;
+
+            // Handles a collision event
+            result = collision_event(
+                global_nx, nx, x_off, y_off, idx[0], master_key,
+                inv_ntotal_particles, distance_to_collision, local_density,
+                cs_scatter_keys_acc, cs_scatter_values_acc, cs_scatter_nentries, cs_absorb_keys_acc,
+                cs_absorb_values_acc, cs_absorb_nentries, particles_acc, &counter,
+                &energy_deposition, &number_density, &microscopic_cs_scatter,
+                &microscopic_cs_absorb, &macroscopic_cs_scatter,
+                &macroscopic_cs_absorb, energy_deposition_tally_acc,
+                &scatter_cs_index, &absorb_cs_index, rn, &speed, idx);
+
+            if (result != PARTICLE_CONTINUE) {
+              break;
+            }
+          }
+          // Check if we have reached facet
+          else if (distance_to_facet < distance_to_census) {
+
+            // Track the number of fact encounters
+            // TODO reduction_result.facets += 1;
+
+            result = facet_event(
+                global_nx, global_ny, nx, ny, x_off, y_off,
+                inv_ntotal_particles, distance_to_facet, speed, cell_mfp,
+                x_facet, density_acc, neighbours, particles_acc, &energy_deposition,
+                &number_density, &microscopic_cs_scatter,
+                &microscopic_cs_absorb, &macroscopic_cs_scatter,
+                &macroscopic_cs_absorb, energy_deposition_tally_acc, &cellx,
+                &celly, &local_density, idx);
+
+            if (result != PARTICLE_CONTINUE) {
+              break;
+            }
+
+          } else {
+
+            census_event(global_nx, nx, x_off, y_off, inv_ntotal_particles,
+                         distance_to_census, cell_mfp, particles_acc,
+                         &energy_deposition, &number_density,
+                         &microscopic_cs_scatter, &microscopic_cs_absorb,
+                         energy_deposition_tally_acc, idx);
+
+            break;
+          }
+        }
+      }
+    });
+  });
+
+  // // TODO Call reduction
+  // handle_particles f(global_nx, global_ny, nx, ny, master_key, pad, x_off, y_off,
+  //                     1, dt, neighbours, density, edgex, edgey,
+  //                     ntotal_particles, particles, cs_scatter_keys,
+  //                     cs_scatter_values, cs_scatter_nentries, cs_absorb_keys,
+  //                     cs_absorb_values, cs_absorb_nentries, energy_deposition_tally);
+  // Kokkos::parallel_reduce("reduction", *nparticles, f, result);
+
+  // TODO? Kokkos::fence();
 
 
-  // Call reduction
-  handle_particles f(global_nx, global_ny, nx, ny, master_key, pad, x_off, y_off,
-                      1, dt, neighbours, density, edgex, edgey, edgedx, edgedy,
-                      ntotal_particles, particles, cs_scatter_keys,
-                      cs_scatter_values, cs_scatter_nentries, cs_absorb_keys,
-                      cs_absorb_values, cs_absorb_nentries, energy_deposition_tally);
-  Kokkos::parallel_reduce("reduction", *nparticles, f, result);
+  // TODO *facet_events += result.facets;
+  // TODO *collision_events += result.collisions;
 
-  Kokkos::fence();
-
-
-  *facet_events += result.facets;
-  *collision_events += result.collisions;
-
-  printf("Particles  %llu\n", result.nparticles);
-
+  printf("Particles  %llu\n", 70707070); // TODO result.nparticles);
 }
 
 // Handles a collision event
@@ -296,13 +219,13 @@ inline int collision_event(
     const uint64_t pkey, const uint64_t master_key,
     const double inv_ntotal_particles, const double distance_to_collision,
     const double local_density,
-    Kokkos::View<const double *> cs_scatter_keys,
-    Kokkos::View<const double *> cs_scatter_values,
+    read_accessor_t cs_scatter_keys_acc,
+    read_accessor_t cs_scatter_values_acc,
     const int cs_scatter_nentries,
-    Kokkos::View<const double *> cs_absorb_keys,
-    Kokkos::View<const double *> cs_absorb_values,
+    read_accessor_t cs_absorb_keys_acc,
+    read_accessor_t cs_absorb_values_acc,
     const int cs_absorb_nentries,
-    Particle* particle,
+    particle_accessor_t particles_acc,
     uint64_t* counter,
     double* energy_deposition,
     double* number_density,
@@ -310,21 +233,22 @@ inline int collision_event(
     double* microscopic_cs_absorb,
     double* macroscopic_cs_scatter,
     double* macroscopic_cs_absorb,
-    Kokkos::View<double *> energy_deposition_tally,
+    accessor_t energy_deposition_tally_acc,
     int* scatter_cs_index,
     int* absorb_cs_index,
     double rn[NRANDOM_NUMBERS],
-    double* speed) {
+    double* speed,
+    cl::sycl::id<1> idx) {
 
   // Energy deposition stored locally for collision, not in tally mesh
   *energy_deposition += calculate_energy_deposition(
-      global_nx, nx, x_off, y_off, particle, inv_ntotal_particles,
+      global_nx, nx, x_off, y_off, particles_acc[idx], inv_ntotal_particles,
       distance_to_collision, *number_density, *microscopic_cs_absorb,
       *microscopic_cs_scatter + *microscopic_cs_absorb);
 
   // Moves the particle to the collision site
-  particle->x += distance_to_collision * particle->omega_x;
-  particle->y += distance_to_collision * particle->omega_y;
+  particles_acc[idx].x += distance_to_collision * particles_acc[idx].omega_x;
+  particles_acc[idx].y += distance_to_collision * particles_acc[idx].omega_y;
 
   const double p_absorb = *macroscopic_cs_absorb /
                           (*macroscopic_cs_scatter + *macroscopic_cs_absorb);
@@ -336,15 +260,15 @@ inline int collision_event(
     /* Model particle absorption */
 
     // Find the new particle weight after absorption, saving the energy change
-    particle->weight *= (1.0 - p_absorb);
+    particles_acc[idx].weight *= (1.0 - p_absorb);
 
-    if (particle->energy < MIN_ENERGY_OF_INTEREST) {
+    if (particles_acc[idx].energy < MIN_ENERGY_OF_INTEREST) {
       // Energy is too low, so mark the particle for deletion
-      particle->dead = 1;
+      particles_acc[idx].dead = 1;
 
       // Need to store tally information as finished with particle
-      update_tallies(nx, x_off, y_off, particle, inv_ntotal_particles,
-                     *energy_deposition, energy_deposition_tally);
+      update_tallies(nx, x_off, y_off, particles_acc[idx], inv_ntotal_particles,
+                     *energy_deposition, energy_deposition_tally_acc);
       *energy_deposition = 0.0;
       return PARTICLE_DEAD;
     }
@@ -360,39 +284,39 @@ inline int collision_event(
     const double mu_cm = 1.0 - 2.0 * rn1[1];
 
     // Calculate the new energy based on the relation to angle of incidence
-    const double e_new = particle->energy *
+    const double e_new = particles_acc[idx].energy *
                          (MASS_NO * MASS_NO + 2.0 * MASS_NO * mu_cm + 1.0) /
                          ((MASS_NO + 1.0) * (MASS_NO + 1.0));
 
     // Convert the angle into the laboratory frame of reference
-    double cos_theta = 0.5 * ((MASS_NO + 1.0) * sqrt(e_new / particle->energy) -
-                              (MASS_NO - 1.0) * sqrt(particle->energy / e_new));
+    double cos_theta = 0.5 * ((MASS_NO + 1.0) * sqrt(e_new / particles_acc[idx].energy) -
+                              (MASS_NO - 1.0) * sqrt(particles_acc[idx].energy / e_new));
 
     // Alter the direction of the velocities
     const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
     const double omega_x_new =
-        (particle->omega_x * cos_theta - particle->omega_y * sin_theta);
+        (particles_acc[idx].omega_x * cos_theta - particles_acc[idx].omega_y * sin_theta);
     const double omega_y_new =
-        (particle->omega_x * sin_theta + particle->omega_y * cos_theta);
-    particle->omega_x = omega_x_new;
-    particle->omega_y = omega_y_new;
-    particle->energy = e_new;
+        (particles_acc[idx].omega_x * sin_theta + particles_acc[idx].omega_y * cos_theta);
+    particles_acc[idx].omega_x = omega_x_new;
+    particles_acc[idx].omega_y = omega_y_new;
+    particles_acc[idx].energy = e_new;
   }
 
   // Energy has changed so update the cross-sections
   *microscopic_cs_scatter = microscopic_cs_for_energy(
-      cs_scatter_keys, cs_scatter_values, cs_scatter_nentries, particle->energy, scatter_cs_index);
+      cs_scatter_keys_acc, cs_scatter_values_acc, cs_scatter_nentries, particles_acc[idx].energy, scatter_cs_index);
   *microscopic_cs_absorb = microscopic_cs_for_energy(
-      cs_absorb_keys, cs_absorb_values, cs_absorb_nentries, particle->energy, absorb_cs_index);
+      cs_absorb_keys_acc, cs_absorb_values_acc, cs_absorb_nentries, particles_acc[idx].energy, absorb_cs_index);
   *number_density = (local_density * AVOGADROS / MOLAR_MASS);
   *macroscopic_cs_scatter = *number_density * (*microscopic_cs_scatter) * BARNS;
   *macroscopic_cs_absorb = *number_density * (*microscopic_cs_absorb) * BARNS;
 
   // Re-sample number of mean free paths to collision
   generate_random_numbers(pkey, master_key, (*counter)++, &rn[0], &rn[1]);
-  particle->mfp_to_collision = -log(rn[0]) / *macroscopic_cs_scatter;
-  particle->dt_to_census -= distance_to_collision / *speed;
-  *speed = sqrt((2.0 * particle->energy * eV_TO_J) / PARTICLE_MASS);
+  particles_acc[idx].mfp_to_collision = -log(rn[0]) / *macroscopic_cs_scatter;
+  particles_acc[idx].dt_to_census -= distance_to_collision / *speed;
+  *speed = sqrt((2.0 * particles_acc[idx].energy * eV_TO_J) / PARTICLE_MASS);
 
   return PARTICLE_CONTINUE;
 }
@@ -402,80 +326,81 @@ inline int facet_event(const int global_nx, const int global_ny, const int nx,
                 const int ny, const int x_off, const int y_off,
                 const double inv_ntotal_particles, const double distance_to_facet,
                 const double speed, const double cell_mfp, const int x_facet,
-                Kokkos::View<const double *> density,
+                read_accessor_t density_acc,
                 const int* neighbours,
-                Particle* particle,
+                particle_accessor_t particles_acc,
                 double* energy_deposition,
                 double* number_density,
                 double* microscopic_cs_scatter,
                 double* microscopic_cs_absorb,
                 double* macroscopic_cs_scatter,
                 double* macroscopic_cs_absorb,
-                Kokkos::View<double *> energy_deposition_tally,
+                accessor_t energy_deposition_tally_acc,
                 int* cellx,
                 int* celly,
-                double* local_density) {
+                double* local_density,
+                cl::sycl::id<1> idx) {
 
   // Update the mean free paths until collision
-  particle->mfp_to_collision -= (distance_to_facet / cell_mfp);
-  particle->dt_to_census -= (distance_to_facet / speed);
+  particles_acc[idx].mfp_to_collision -= (distance_to_facet / cell_mfp);
+  particles_acc[idx].dt_to_census -= (distance_to_facet / speed);
 
   *energy_deposition += calculate_energy_deposition(
-      global_nx, nx, x_off, y_off, particle, inv_ntotal_particles,
+      global_nx, nx, x_off, y_off, particles_acc[idx], inv_ntotal_particles,
       distance_to_facet, *number_density, *microscopic_cs_absorb,
       *microscopic_cs_scatter + *microscopic_cs_absorb);
 
   // Update tallies as we leave a cell
-  update_tallies(nx, x_off, y_off, particle, inv_ntotal_particles,
-                 *energy_deposition, energy_deposition_tally);
+  update_tallies(nx, x_off, y_off, particles_acc[idx], inv_ntotal_particles,
+                 *energy_deposition, energy_deposition_tally_acc);
   *energy_deposition = 0.0;
 
   // Move the particle to the facet
-  particle->x += distance_to_facet * particle->omega_x;
-  particle->y += distance_to_facet * particle->omega_y;
+  particles_acc[idx].x += distance_to_facet * particles_acc[idx].omega_x;
+  particles_acc[idx].y += distance_to_facet * particles_acc[idx].omega_y;
 
   if (x_facet) {
-    if (particle->omega_x > 0.0) {
+    if (particles_acc[idx].omega_x > 0.0) {
       // Reflect at the boundary
-      if (particle->cellx >= (global_nx - 1)) {
-        particle->omega_x = -(particle->omega_x);
+      if (particles_acc[idx].cellx >= (global_nx - 1)) {
+        particles_acc[idx].omega_x = -(particles_acc[idx].omega_x);
       } else {
         // Moving to right cell
-        particle->cellx++;
+        particles_acc[idx].cellx++;
       }
-    } else if (particle->omega_x < 0.0) {
-      if (particle->cellx <= 0) {
+    } else if (particles_acc[idx].omega_x < 0.0) {
+      if (particles_acc[idx].cellx <= 0) {
         // Reflect at the boundary
-        particle->omega_x = -(particle->omega_x);
+        particles_acc[idx].omega_x = -(particles_acc[idx].omega_x);
       } else {
         // Moving to left cell
-        particle->cellx--;
+        particles_acc[idx].cellx--;
       }
     }
   } else {
-    if (particle->omega_y > 0.0) {
+    if (particles_acc[idx].omega_y > 0.0) {
       // Reflect at the boundary
-      if (particle->celly >= (global_ny - 1)) {
-        particle->omega_y = -(particle->omega_y);
+      if (particles_acc[idx].celly >= (global_ny - 1)) {
+        particles_acc[idx].omega_y = -(particles_acc[idx].omega_y);
       } else {
         // Moving to north cell
-        particle->celly++;
+        particles_acc[idx].celly++;
       }
-    } else if (particle->omega_y < 0.0) {
+    } else if (particles_acc[idx].omega_y < 0.0) {
       // Reflect at the boundary
-      if (particle->celly <= 0) {
-        particle->omega_y = -(particle->omega_y);
+      if (particles_acc[idx].celly <= 0) {
+        particles_acc[idx].omega_y = -(particles_acc[idx].omega_y);
       } else {
         // Moving to south cell
-        particle->celly--;
+        particles_acc[idx].celly--;
       }
     }
   }
 
   // Update the data based on new cell
-  *cellx = particle->cellx - x_off;
-  *celly = particle->celly - y_off;
-  *local_density = density[*celly * nx + *cellx];
+  *cellx = particles_acc[idx].cellx - x_off;
+  *celly = particles_acc[idx].celly - y_off;
+  *local_density = density_acc[*celly * nx + *cellx];
   *number_density = (*local_density * AVOGADROS / MOLAR_MASS);
   *macroscopic_cs_scatter = *number_density * *microscopic_cs_scatter * BARNS;
   *macroscopic_cs_absorb = *number_density * *microscopic_cs_absorb * BARNS;
@@ -487,42 +412,41 @@ inline int facet_event(const int global_nx, const int global_ny, const int nx,
 inline void census_event(const int global_nx, const int nx, const int x_off,
                   const int y_off, const double inv_ntotal_particles,
                   const double distance_to_census, const double cell_mfp,
-                  Particle* particle,
+                  particle_accessor_t particles_acc,
                   double* energy_deposition,
                   double* number_density,
                   double* microscopic_cs_scatter,
                   double* microscopic_cs_absorb,
-                  Kokkos::View<double *> energy_deposition_tally) {
+                  accessor_t energy_deposition_tally_acc,
+                  cl::sycl::id<1> idx) {
 
   // We have not changed cell or energy level at this stage
-  particle->x += distance_to_census * particle->omega_x;
-  particle->y += distance_to_census * particle->omega_y;
-  particle->mfp_to_collision -= (distance_to_census / cell_mfp);
+  particles_acc[idx].x += distance_to_census * particles_acc[idx].omega_x;
+  particles_acc[idx].y += distance_to_census * particles_acc[idx].omega_y;
+  particles_acc[idx].mfp_to_collision -= (distance_to_census / cell_mfp);
   *energy_deposition += calculate_energy_deposition(
-      global_nx, nx, x_off, y_off, particle, inv_ntotal_particles,
+      global_nx, nx, x_off, y_off, particles_acc[idx], inv_ntotal_particles,
       distance_to_census, *number_density, *microscopic_cs_absorb,
       *microscopic_cs_scatter + *microscopic_cs_absorb);
 
   // Need to store tally information as finished with particle
-  update_tallies(nx, x_off, y_off, particle, inv_ntotal_particles,
-                 *energy_deposition, energy_deposition_tally);
+  update_tallies(nx, x_off, y_off, particles_acc[idx], inv_ntotal_particles,
+                 *energy_deposition, energy_deposition_tally_acc);
 
-  particle->dt_to_census = 0.0;
+  particles_acc[idx].dt_to_census = 0.0;
 }
 
 // Tallies the energy deposition in the cell
 inline void update_tallies(const int nx, const int x_off, const int y_off,
-                                Particle* particle,
+                                Particle particle,
                                 const double inv_ntotal_particles,
                                 const double energy_deposition,
-                                Kokkos::View<double *> energy_deposition_tally) {
+                                accessor_t energy_deposition_tally_acc) {
 
-  const int cellx = particle->cellx - x_off;
-  const int celly = particle->celly - y_off;
+  const int cellx = particle.cellx - x_off;
+  const int celly = particle.celly - y_off;
 
-
-      energy_deposition_tally[celly * nx + cellx] +=
-        energy_deposition*inv_ntotal_particles;
+  energy_deposition_tally_acc[celly * nx + cellx] += energy_deposition * inv_ntotal_particles;
 }
 
 // Calculate the distance to the next facet
@@ -532,8 +456,8 @@ inline void calc_distance_to_facet(const int global_nx, const double x, const do
                             const double speed, const int particle_cellx,
                             const int particle_celly, double* distance_to_facet,
                             int* x_facet,
-                            Kokkos::View<const double *> edgex,
-                            Kokkos::View<const double *> edgey) {
+                            read_accessor_t edgex_acc,
+                            read_accessor_t edgey_acc) {
 
   // Check the master_key required to move the particle along a single axis
   // If the velocity is positive then the top or right boundary will be hit
@@ -547,11 +471,11 @@ inline void calc_distance_to_facet(const int global_nx, const double x, const do
   // in the calculated values, using OPEN_BOUND_CORRECTION, which is the
   // smallest possible distance from the closed bound e.g. 1.0e-14.
   double dt_x = (omega_x >= 0.0)
-                    ? ((edgex[cellx + 1]) - x) * u_x_inv
-                    : ((edgex[cellx] - OPEN_BOUND_CORRECTION) - x) * u_x_inv;
+                    ? ((edgex_acc[cellx + 1]) - x) * u_x_inv
+                    : ((edgex_acc[cellx] - OPEN_BOUND_CORRECTION) - x) * u_x_inv;
   double dt_y = (omega_y >= 0.0)
-                    ? ((edgey[celly + 1]) - y) * u_y_inv
-                    : ((edgey[celly] - OPEN_BOUND_CORRECTION) - y) * u_y_inv;
+                    ? ((edgey_acc[celly + 1]) - y) * u_y_inv
+                    : ((edgey_acc[celly] - OPEN_BOUND_CORRECTION) - y) * u_y_inv;
   *x_facet = (dt_x < dt_y) ? 1 : 0;
 
   // Calculated the projection to be
@@ -565,22 +489,22 @@ inline void calc_distance_to_facet(const int global_nx, const double x, const do
     // aint the x axis to the edge (ax, 0).(x, y)
     *distance_to_facet =
         (omega_x >= 0.0)
-            ? ((edgex[cellx + 1]) - x) * mag_u0 * u_x_inv
-            : ((edgex[cellx] - OPEN_BOUND_CORRECTION) - x) * mag_u0 * u_x_inv;
+            ? ((edgex_acc[cellx + 1]) - x) * mag_u0 * u_x_inv
+            : ((edgex_acc[cellx] - OPEN_BOUND_CORRECTION) - x) * mag_u0 * u_x_inv;
   } else {
     // We are centered on the origin, so the x component is 0 after travelling
     // along the y axis to the edge (0, ay).(x, y)
     *distance_to_facet =
         (omega_y >= 0.0)
-            ? ((edgey[celly + 1]) - y) * mag_u0 * u_y_inv
-            : ((edgey[celly] - OPEN_BOUND_CORRECTION) - y) * mag_u0 * u_y_inv;
+            ? ((edgey_acc[celly + 1]) - y) * mag_u0 * u_y_inv
+            : ((edgey_acc[celly] - OPEN_BOUND_CORRECTION) - y) * mag_u0 * u_y_inv;
   }
 }
 
 // Calculate the energy deposition in the cell
 inline double calculate_energy_deposition(
     const int global_nx, const int nx, const int x_off, const int y_off,
-    Particle* particle, const double inv_ntotal_particles,
+    Particle particle, const double inv_ntotal_particles,
     const double path_length, const double number_density,
     const double microscopic_cs_absorb, const double microscopic_cs_total) {
 
@@ -590,23 +514,23 @@ inline double calculate_energy_deposition(
       (microscopic_cs_absorb / microscopic_cs_total) *
       average_exit_energy_absorb;
   const double average_exit_energy_scatter =
-      particle->energy *
+      particle.energy *
       ((MASS_NO * MASS_NO + MASS_NO + 1) / ((MASS_NO + 1) * (MASS_NO + 1)));
   const double scattering_heating =
       (1.0 - (microscopic_cs_absorb / microscopic_cs_total)) *
       average_exit_energy_scatter;
   const double heating_response =
-      (particle->energy - scattering_heating - absorption_heating);
-  return particle->weight * path_length * (microscopic_cs_total * BARNS) *
+      (particle.energy - scattering_heating - absorption_heating);
+  return particle.weight * path_length * (microscopic_cs_total * BARNS) *
          heating_response * number_density;
 }
 
 // Fetch the cross section for a particular energy value
-inline double microscopic_cs_for_energy(Kokkos::View<const double *> keys,
-                                 Kokkos::View<const double *> values,
-                                 const int nentries,
-                                 const double energy,
-                                 int* cs_index) {
+inline double microscopic_cs_for_energy(read_accessor_t keys,
+                                        read_accessor_t values,
+                                        const int nentries,
+                                        const double energy,
+                                        int* cs_index) {
 
   // Use a simple binary search to find the energy group
   int ind = nentries / 2;
@@ -624,18 +548,13 @@ inline double microscopic_cs_for_energy(Kokkos::View<const double *> keys,
 
 // Validates the results of the simulation
 void validate(const int nx, const int ny, const char* params_filename,
-              const int rank, Kokkos::View<double* > energy_deposition_tally) {
+              const int rank, double* energy_deposition_tally) {
 
-  double local_energy_tally = 0.0;
+  double global_energy_tally = 0.0;
 
-  Kokkos::parallel_reduce(nx * ny, KOKKOS_LAMBDA (int ii, double &tmp)
-  {
-    tmp += energy_deposition_tally[ii];
-  }, local_energy_tally);
-
-
-  // Finalise the reduction globally
-  double global_energy_tally = reduce_all_sum(local_energy_tally);
+  for(int ii = 0; ii < nx * ny; ii++) {
+    global_energy_tally += energy_deposition_tally[ii];
+  }
 
   if (rank != MASTER) {
     return;
@@ -660,82 +579,84 @@ void validate(const int nx, const int ny, const char* params_filename,
     printf("FAILED validation.\n");
   }
 
-  free(keys);
-  free(values);
+  // free(keys);
+  // free(values);
 }
 
 // Initialises a new particle ready for tracking
-size_t inject_particles(const int nparticles, const int global_nx,
-                        const int local_nx, const int local_ny, const int pad,
-                        const double local_particle_left_off,
-                        const double local_particle_bottom_off,
-                        const double local_particle_width,
-                        const double local_particle_height, const int x_off,
-                        const int y_off, const double dt,
-                        const Kokkos::View<double *> edgex,
-                        const Kokkos::View<double *> edgey,
-                        const double initial_energy,
-                        Kokkos::View<Particle* >* particles) {
+size_t inject_particles(cl::sycl::queue queue,
+    const int nparticles, const int global_nx,
+    const int local_nx, const int local_ny, const int pad,
+    const double local_particle_left_off,
+    const double local_particle_bottom_off,
+    const double local_particle_width,
+    const double local_particle_height, const int x_off,
+    const int y_off, const double dt,
+    cl::sycl::buffer<double, 1>* edgex,
+    cl::sycl::buffer<double, 1>* edgey,
+    const double initial_energy,
+    cl::sycl::buffer<Particle, 1>* particles) {
 
-  Kokkos::View<Particle* > p;
-
-  new(&p) Kokkos::View<Particle*>("particles", nparticles*2);
+  particles = new cl::sycl::buffer<Particle, 1>(cl::sycl::range<1>(nparticles*2)); // TODO: why *2 ?
 
   START_PROFILING(&compute_profile);
 
-  Kokkos::parallel_for(nparticles, KOKKOS_LAMBDA (int kk) {
+  queue.submit([&] (cl::sycl::handler& cgh) {
+      auto particles_acc = particles->get_access<cl::sycl::access::mode::read_write>(cgh);
+      // TODO: maybe discard access
+      auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
+      auto edgey_acc = edgey->get_access<cl::sycl::access::mode::read>(cgh);
 
-    Particle* particle = &p[kk];
+      cgh.parallel_for<class inject_particles_kernel>(cl::sycl::range<1>(nparticles), [=](cl::sycl::id<1> idx) {
 
-    double rn[NRANDOM_NUMBERS];
-    generate_random_numbers(kk, 0, 0, &rn[0], &rn[1]);
+        double rn[NRANDOM_NUMBERS];
+        generate_random_numbers(idx[0], 0, 0, &rn[0], &rn[1]);
 
-    // Set the initial nandom location of the particle inside the source
-    // region
-    particle->x = local_particle_left_off + rn[0] * local_particle_width;
-    particle->y = local_particle_bottom_off + rn[1] * local_particle_height;
+        // Set the initial nandom location of the particle inside the source
+        // region
+        particles_acc[idx].x = local_particle_left_off + rn[0] * local_particle_width;
+        particles_acc[idx].y = local_particle_bottom_off + rn[1] * local_particle_height;
 
-    // Check the location of the specific cell that the particle sits within.
-    // We have to check this explicitly because the mesh might be non-uniform.
-    int cellx = 0;
-    int celly = 0;
-    for (int ii = 0; ii < local_nx; ++ii) {
-      if (particle->x >= edgex[ii + pad] && particle->x < edgex[ii + pad + 1]) {
-        cellx = x_off + ii;
-        break;
-      }
-    }
-    for (int ii = 0; ii < local_ny; ++ii) {
-      if (particle->y >= edgey[ii + pad] && particle->y < edgey[ii + pad + 1]) {
-        celly = y_off + ii;
-        break;
-      }
-    }
+        // Check the location of the specific cell that the particle sits within.
+        // We have to check this explicitly because the mesh might be non-uniform.
+        int cellx = 0;
+        int celly = 0;
+        for (int ii = 0; ii < local_nx; ++ii) {
+          if (particles_acc[idx].x >= edgex_acc[ii + pad] && particles_acc[idx].x < edgex_acc[ii + pad + 1]) {
+            cellx = x_off + ii;
+            break;
+          }
+        }
+        for (int ii = 0; ii < local_ny; ++ii) {
+          if (particles_acc[idx].y >= edgey_acc[ii + pad] && particles_acc[idx].y < edgey_acc[ii + pad + 1]) {
+            celly = y_off + ii;
+            break;
+          }
+        }
 
-    particle->cellx = cellx;
-    particle->celly = celly;
+        particles_acc[idx].cellx = cellx;
+        particles_acc[idx].celly = celly;
 
-    // Generating theta has uniform density, however 0.0 and 1.0 produce the
-    // same value which introduces very very very small bias...
-    generate_random_numbers(kk, 0, 1, &rn[0], &rn[1]);
-    const double theta = 2.0 * M_PI * rn[0];
-    particle->omega_x = cos(theta);
-    particle->omega_y = sin(theta);
+        // Generating theta has uniform density, however 0.0 and 1.0 produce the
+        // same value which introduces very very very small bias...
+        generate_random_numbers(idx.get(0), 0, 1, &rn[0], &rn[1]);
+        const double theta = 2.0 * M_PI * rn[0];
+        particles_acc[idx].omega_x = cos(theta);
+        particles_acc[idx].omega_y = sin(theta);
 
-    // This approximation sets mono-energetic initial state for source
-    // particles
-    particle->energy = initial_energy;
+        // This approximation sets mono-energetic initial state for source
+        // particles
+        particles_acc[idx].energy = initial_energy;
 
-    // Set a weight for the particle to track absorption
-    particle->weight = 1.0;
-    particle->dt_to_census = dt;
-    particle->mfp_to_collision = 0.0;
-    particle->dead = 0;
+        // Set a weight for the particle to track absorption
+        particles_acc[idx].weight = 1.0;
+        particles_acc[idx].dt_to_census = dt;
+        particles_acc[idx].mfp_to_collision = 0.0;
+        particles_acc[idx].dead = 0;
+      });
   });
 
   STOP_PROFILING(&compute_profile, "initialising particles");
-
-  *particles = p;
 
   return (sizeof(Particle) * nparticles * 2);
 }

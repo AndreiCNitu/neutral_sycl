@@ -2,13 +2,30 @@
 #include "mesh.h"
 #include "shared.h"
 
+class reflect_north_kernel;
+class reflect_south_kernel;
+class reflect_east_kernel;
+class reflect_west_kernel;
+
+
 // Enforce reflective boundary conditions on the problem state
-void handle_boundary_2d(const int nx, const int ny, Mesh* mesh, Kokkos::View<double *> arr,
+void handle_boundary_2d(cl::sycl::queue queue,
+                        const int nx, const int ny,
+                        Mesh* mesh, cl::sycl::buffer<double, 1>* arr,
                         const int invert, const int pack) {
   START_PROFILING(&comms_profile);
 
   const int pad = mesh->pad;
   int* neighbours = mesh->neighbours;
+
+  // TODO redundant
+  // queue.submit([&] (cl::sycl::handler& cgh) {
+  //     auto buf_acc = buf->get_access<cl::sycl::access::mode::ACCESS_MODE>(cgh);
+  //
+  //     cgh.parallel_for<class whyyyyyy>(cl::sycl::range<1>(TODO), [=](cl::sycl::id<1> idx) {
+  //       buf_acc[idx] = 0.0f;
+  //     });
+  //   });
 
   // Perform the boundary reflections, potentially with the data updated from
   // neighbours
@@ -18,37 +35,54 @@ void handle_boundary_2d(const int nx, const int ny, Mesh* mesh, Kokkos::View<dou
    // Reflect at the north
   if (neighbours[NORTH] == EDGE) {
     for (int dd = 0; dd < pad; ++dd) {
-      Kokkos::parallel_for(Kokkos::RangePolicy< >( pad, nx-pad ), KOKKOS_LAMBDA (int jj) {
-        arr[(ny - pad + dd) * nx + jj] =
-            y_inversion_coeff * arr[(ny - 1 - pad - dd) * nx + jj];
+      queue.submit([&] (cl::sycl::handler& cgh) {
+        auto arr_acc = arr->get_access<cl::sycl::access::mode::read_write>(cgh);
+
+        cgh.parallel_for<class reflect_north_kernel>(cl::sycl::range<1>(nx-2*pad), [=](cl::sycl::id<1> idx) {
+          arr_acc[(ny - pad + dd) * nx + idx[0] + pad] =
+              y_inversion_coeff * arr_acc[(ny - 1 - pad - dd) * nx + idx[0] + pad];
+        });
       });
     }
   }
   // reflect at the south
   if (neighbours[SOUTH] == EDGE) {
     for (int dd = 0; dd < pad; ++dd) {
-      Kokkos::parallel_for(Kokkos::RangePolicy< >( pad, nx-pad ), KOKKOS_LAMBDA (int jj) {
-        arr[(pad - 1 - dd) * nx + jj] =
-            y_inversion_coeff * arr[(pad + dd) * nx + jj];
+
+      queue.submit([&] (cl::sycl::handler& cgh) {
+        auto arr_acc = arr->get_access<cl::sycl::access::mode::read_write>(cgh);
+
+        cgh.parallel_for<class reflect_south_kernel>(cl::sycl::range<1>(nx-2*pad), [=](cl::sycl::id<1> idx) {
+          arr_acc[(pad - 1 - dd) * nx + idx[0] + pad] =
+              y_inversion_coeff * arr_acc[(pad + dd) * nx + idx[0] + pad];
+        });
       });
     }
   }
   // reflect at the east
   if (neighbours[EAST] == EDGE) {
-      Kokkos::parallel_for(Kokkos::RangePolicy< >( pad, ny-pad ), KOKKOS_LAMBDA (int ii) {
-      for (int dd = 0; dd < pad; ++dd) {
-        arr[ii * nx + (nx - pad + dd)] =
-            x_inversion_coeff * arr[ii * nx + (nx - 1 - pad - dd)];
-      }
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto arr_acc = arr->get_access<cl::sycl::access::mode::read_write>(cgh);
+
+      cgh.parallel_for<class reflect_east_kernel>(cl::sycl::range<1>(ny-2*pad), [=](cl::sycl::id<1> idx) {
+        for (int dd = 0; dd < pad; ++dd) {
+          arr_acc[(idx[0] + pad) * nx + (nx - pad + dd)] =
+              x_inversion_coeff * arr_acc[(idx[0] + pad) * nx + (nx - 1 - pad - dd)];
+        }
+      });
     });
   }
+  // reflect at the west
   if (neighbours[WEST] == EDGE) {
-// reflect at the west
-      Kokkos::parallel_for(Kokkos::RangePolicy< >( pad, ny-pad ), KOKKOS_LAMBDA (int ii) {
-      for (int dd = 0; dd < pad; ++dd) {
-        arr[ii * nx + (pad - 1 - dd)] =
-            x_inversion_coeff * arr[ii * nx + (pad + dd)];
-      }
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto arr_acc = arr->get_access<cl::sycl::access::mode::read_write>(cgh);
+
+      cgh.parallel_for<class reflect_west_kernel>(cl::sycl::range<1>(ny-2*pad), [=](cl::sycl::id<1> idx) {
+        for (int dd = 0; dd < pad; ++dd) {
+          arr_acc[(idx[0] + pad) * nx + (pad - 1 - dd)] =
+              x_inversion_coeff * arr_acc[(idx[0] + pad) * nx + (pad + dd)];
+        }
+      });
     });
   }
   STOP_PROFILING(&comms_profile, __func__);
