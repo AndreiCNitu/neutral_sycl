@@ -595,14 +595,15 @@ size_t inject_particles(cl::sycl::queue queue,
     cl::sycl::buffer<double, 1>* edgex,
     cl::sycl::buffer<double, 1>* edgey,
     const double initial_energy,
-    cl::sycl::buffer<Particle, 1>* particles) {
+    cl::sycl::buffer<Particle, 1>** particles) {
 
-  particles = new cl::sycl::buffer<Particle, 1>(cl::sycl::range<1>(nparticles*2)); // TODO: why *2 ?
+  *particles = new cl::sycl::buffer<Particle, 1>(cl::sycl::range<1>(nparticles*2)); // TODO: why *2 ?
 
   START_PROFILING(&compute_profile);
 
+  cl::sycl::buffer<Particle, 1> particles_ = **particles;
   queue.submit([&] (cl::sycl::handler& cgh) {
-      auto particles_acc = particles->get_access<cl::sycl::access::mode::read_write>(cgh);
+      auto particles_acc = particles_.get_access<cl::sycl::access::mode::read_write>(cgh);
       // TODO: maybe discard access
       auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
       auto edgey_acc = edgey->get_access<cl::sycl::access::mode::read>(cgh);

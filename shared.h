@@ -65,9 +65,9 @@ size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, 
 size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, int* h_buf, size_t len);
 size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>** buf, const size_t len);
 
-void allocate_host_data(double* buf, size_t len);
+void allocate_host_data(double** buf, size_t len);
 void allocate_host_float_data(float* buf, size_t len);
-void allocate_host_int_data(int* buf, size_t len);
+void allocate_host_int_data(int** buf, size_t len);
 void allocate_host_uint64_data(uint64_t* buf, size_t len);
 
 // TODO 

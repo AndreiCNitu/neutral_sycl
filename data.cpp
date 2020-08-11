@@ -131,15 +131,15 @@ size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>
 //
 
 // Allocates some double precision data
-void allocate_host_data(double* buf, const size_t len) {
+void allocate_host_data(double** buf, const size_t len) {
     if(len == 0) {
         return;
     }
 
-    buf = (double*) malloc(sizeof(double) * len);
+    *buf = (double*) malloc(sizeof(double) * len);
 
     for (int i = 0; i < len; ++i) {
-        buf[i] = 1.0; // TODO Why 1, not 0 ?
+        (*buf)[i] = 1.0; // TODO Why 1, not 0 ?
     }
 }
 
@@ -156,15 +156,15 @@ void allocate_host_float_data(float* buf, const size_t len) {
     }
 }
 
-void allocate_host_int_data(int* buf, const size_t len) {
+void allocate_host_int_data(int** buf, const size_t len) {
     if(len == 0) {
         return;
     }
 
-    buf = (int*) malloc(sizeof(int) * len);
+    *buf = (int*) malloc(sizeof(int) * len);
 
     for (int i = 0; i < len; ++i) {
-        buf[i] = 0;
+        (*buf)[i] = 0;
     }
 }
 
@@ -276,11 +276,11 @@ void set_problem_2d(cl::sycl::queue queue,
 
     int* h_keys;
     cl::sycl::buffer<int, 1>* d_keys;
-    allocate_host_int_data(h_keys, MAX_KEYS);
+    allocate_host_int_data(&h_keys, MAX_KEYS);
 
     double* h_values;
     cl::sycl::buffer<double, 1>* d_values;
-    allocate_host_data(h_values, MAX_KEYS);
+    allocate_host_data(&h_values, MAX_KEYS);
 
     int nentries = 0;
     while (1) {

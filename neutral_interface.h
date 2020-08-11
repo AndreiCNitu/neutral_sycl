@@ -37,7 +37,7 @@ size_t inject_particles(cl::sycl::queue queue,
     cl::sycl::buffer<double, 1>* edgex,
     cl::sycl::buffer<double, 1>* edgey,
     const double initial_energy,
-    cl::sycl::buffer<Particle, 1>* particles);
+    cl::sycl::buffer<Particle, 1>** particles);
 
 // Validates the results of the simulation
 void validate(const int nx, const int ny, const char* params_filename,

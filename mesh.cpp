@@ -19,21 +19,21 @@ void initialise_mesh_2d(cl::sycl::queue queue, Mesh* mesh) {
                     mesh->width, mesh->height, mesh->edgex, mesh->edgey,
                     mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
-  allocate_host_data(mesh->h_north_buffer_out,
+  allocate_host_data(&(mesh->h_north_buffer_out),
                      (mesh->local_nx + 1) * mesh->pad);
-  allocate_host_data(mesh->h_east_buffer_out,
+  allocate_host_data(&(mesh->h_east_buffer_out),
                      (mesh->local_ny + 1) * mesh->pad);
-  allocate_host_data(mesh->h_south_buffer_out,
+  allocate_host_data(&(mesh->h_south_buffer_out),
                      (mesh->local_nx + 1) * mesh->pad);
-  allocate_host_data(mesh->h_west_buffer_out,
+  allocate_host_data(&(mesh->h_west_buffer_out),
                      (mesh->local_ny + 1) * mesh->pad);
-  allocate_host_data(mesh->h_north_buffer_in,
+  allocate_host_data(&(mesh->h_north_buffer_in),
                      (mesh->local_nx + 1) * mesh->pad);
-  allocate_host_data(mesh->h_east_buffer_in,
+  allocate_host_data(&(mesh->h_east_buffer_in),
                      (mesh->local_ny + 1) * mesh->pad);
-  allocate_host_data(mesh->h_south_buffer_in,
+  allocate_host_data(&(mesh->h_south_buffer_in),
                      (mesh->local_nx + 1) * mesh->pad);
-  allocate_host_data(mesh->h_west_buffer_in,
+  allocate_host_data(&(mesh->h_west_buffer_in),
                      (mesh->local_ny + 1) * mesh->pad);
 
   allocate_data_w_host(queue, &(mesh->north_buffer_out), mesh->h_north_buffer_out, (mesh->local_nx + 1) * mesh->pad);

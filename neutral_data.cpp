@@ -84,7 +84,7 @@ void initialise_neutral_data(cl::sycl::queue queue, NeutralData* neutral_data, M
   // Rounding hack to make sure correct number of particles is selected
   neutral_data->nlocal_particles = nlocal_particles_real + 0.5;
 
-  allocate_host_data(neutral_data->h_energy_deposition_tally, local_nx * local_ny);
+  allocate_host_data(&(neutral_data->h_energy_deposition_tally), local_nx * local_ny);
 
   size_t allocation = allocate_data_w_host(queue, &(neutral_data->energy_deposition_tally),
                                     neutral_data->h_energy_deposition_tally, local_nx * local_ny);
@@ -98,13 +98,13 @@ void initialise_neutral_data(cl::sycl::queue queue, NeutralData* neutral_data, M
 
   // Inject some particles into the mesh if we need to
   if (neutral_data->nlocal_particles) {
-    printf("Allocated %.4fGB of data.\n", allocation / GB);
+    printf("Allocated %.4fGB of data (injecting more).\n", allocation / GB);
     allocation += inject_particles( queue,
         neutral_data->nparticles, mesh->global_nx, mesh->local_nx,
         mesh->local_ny, pad, local_particle_left_off, local_particle_bottom_off,
         local_particle_width, local_particle_height, mesh->x_off, mesh->y_off,
         mesh->dt, mesh->edgex, mesh->edgey, neutral_data->initial_energy,
-        neutral_data->local_particles);
+        &(neutral_data->local_particles));
   }
 
   printf("Allocated %.4fGB of data.\n", allocation / GB);
@@ -136,8 +136,8 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
 
   double* h_keys;
   double* h_values;
-  allocate_host_data(h_keys, cs->nentries);
-  allocate_host_data(h_values, cs->nentries);
+  allocate_host_data(&h_keys, cs->nentries);
+  allocate_host_data(&h_values, cs->nentries);
 
   for (int ii = 0; ii < cs->nentries; ++ii) {
     // Skip whitespace tokens

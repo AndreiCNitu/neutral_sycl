@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
   int nranks = 1;
   initialise_mpi(argc, argv, &rank, &nranks);
 
-  cl::sycl::host_selector device_selector;
+  cl::sycl::default_selector device_selector;
 
   auto exception_handler = [] (cl::sycl::exception_list exceptions) {
     for (std::exception_ptr const& e : exceptions) {
@@ -90,14 +90,17 @@ int main(int argc, char *argv[])
 
   initialise_neutral_data(queue, &neutral_data, &mesh);
 
+  std::cout << "bef bar " << std::endl;
   // Make sure initialisation phase is complete
   barrier();
+  std::cout << "aft bar " << std::endl;
 
  // Main timestep loop where we will track each particle through time
   int tt;
   double wallclock = 0.0;
   double elapsed_sim_time = 0.0;
   for (tt = 1; tt <= mesh.niters; ++tt) {
+  std::cout << "Iter " << tt << std::endl;
 
     if (mesh.rank == MASTER) {
       printf("\nIteration  %d\n", tt);
