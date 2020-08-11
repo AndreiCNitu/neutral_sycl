@@ -19,15 +19,15 @@ class celldy_init_kernel;
 class set_problem_2d_kernel;
 
 // Allocates a double precision array
-size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, size_t len) {
+size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>** buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    buf = new cl::sycl::buffer<double, 1>(cl::sycl::range<1>(len));
+    *buf = new cl::sycl::buffer<double, 1>(cl::sycl::range<1>(len));
 
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto buf_acc = buf->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       cgh.parallel_for<class allocate_data_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
         buf_acc[idx] = 0.0f;
@@ -37,15 +37,15 @@ size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, si
     return sizeof(double) * len;
 }
 
-size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, double* h_buf, size_t len) {
+size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>** buf, double* h_buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    buf = new cl::sycl::buffer<double, 1>(h_buf, cl::sycl::range<1>(len));
+    *buf = new cl::sycl::buffer<double, 1>(h_buf, cl::sycl::range<1>(len));
 
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto buf_acc = buf->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       cgh.parallel_for<class allocate_data_w_host_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
         buf_acc[idx] = 0.0f;
@@ -55,15 +55,15 @@ size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* 
     return sizeof(double) * len;
 }
 
-size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>* buf, size_t len) {
+size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>** buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    buf = new cl::sycl::buffer<float, 1>(cl::sycl::range<1>(len));
+    *buf = new cl::sycl::buffer<float, 1>(cl::sycl::range<1>(len));
 
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto buf_acc = buf->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       cgh.parallel_for<class allocate_float_data_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
         buf_acc[idx] = 0.0f;
@@ -73,15 +73,15 @@ size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>* bu
     return sizeof(float) * len;
 }
 
-size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, size_t len) {
+size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    buf = new cl::sycl::buffer<int, 1>(cl::sycl::range<1>(len));
+    *buf = new cl::sycl::buffer<int, 1>(cl::sycl::range<1>(len));
 
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto buf_acc = buf->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       cgh.parallel_for<class allocate_int_data_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
         buf_acc[idx] = 0.0f;
@@ -91,15 +91,15 @@ size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, s
     return sizeof(int) * len;
 }
 
-size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, int* h_buf, size_t len) {
+size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, int* h_buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    buf = new cl::sycl::buffer<int, 1>(h_buf, cl::sycl::range<1>(len));
+    *buf = new cl::sycl::buffer<int, 1>(h_buf, cl::sycl::range<1>(len));
 
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto buf_acc = buf->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       cgh.parallel_for<class allocate_int_data_w_host_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
         buf_acc[idx] = 0.0f;
@@ -109,15 +109,15 @@ size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>*
     return sizeof(int) * len;
 }
 
-size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>* buf, size_t len) {
+size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>** buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    buf = new cl::sycl::buffer<uint64_t, 1>(cl::sycl::range<1>(len));
+    *buf = new cl::sycl::buffer<uint64_t, 1>(cl::sycl::range<1>(len));
 
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto buf_acc = buf->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       cgh.parallel_for<class allocate_uint64_data>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
         buf_acc[idx] = 0.0f;
@@ -192,9 +192,11 @@ void mesh_data_init_2d(cl::sycl::queue queue,
     cl::sycl::buffer<double, 1>* edgedx, cl::sycl::buffer<double, 1>* edgedy,
     cl::sycl::buffer<double, 1>* celldx, cl::sycl::buffer<double, 1>* celldy) {
 
+    cl::sycl::buffer<double, 1> edgedx_ = *edgedx;
+    cl::sycl::buffer<double, 1> edgex_ = *edgex;
     queue.submit([&] (cl::sycl::handler& cgh) {
-      auto edgedx_acc = edgedx->get_access<cl::sycl::access::mode::read_write>(cgh);
-      auto edgex_acc = edgex->get_access<cl::sycl::access::mode::discard_write>(cgh);
+      auto edgedx_acc = edgedx_.get_access<cl::sycl::access::mode::read_write>(cgh);
+      auto edgex_acc = edgex_.get_access<cl::sycl::access::mode::discard_write>(cgh);
 
       // Simple uniform rectilinear initialisation
       cgh.parallel_for<class edgedx_init_kernel>(cl::sycl::range<1>(local_nx+1), [=](cl::sycl::id<1> idx) {
@@ -257,7 +259,7 @@ void move_host_buffer_to_device(cl::sycl::queue queue,
                                 const size_t len,
                                 double* src,
                                 cl::sycl::buffer<double, 1>* dst) {
-  allocate_data_w_host(queue, dst, src, len);
+  allocate_data_w_host(queue, &dst, src, len);
 }
 
 // Initialise state data in device specific manner
@@ -315,8 +317,8 @@ void set_problem_2d(cl::sycl::queue queue,
     // copy_int_buffer_SEND(MAX_KEYS, &h_keys, &d_keys);
     // copy_buffer_SEND(MAX_KEYS, &h_values, &d_values);
 
-    allocate_int_data_w_host(queue, d_keys, h_keys, MAX_KEYS);
-    allocate_data_w_host(queue, d_values, h_values, MAX_KEYS);
+    allocate_int_data_w_host(queue, &d_keys, h_keys, MAX_KEYS);
+    allocate_data_w_host(queue, &d_values, h_values, MAX_KEYS);
 
     queue.submit([&] (cl::sycl::handler& cgh) {
       auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);

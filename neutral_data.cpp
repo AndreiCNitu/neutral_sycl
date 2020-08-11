@@ -44,8 +44,8 @@ void initialise_neutral_data(cl::sycl::queue queue, NeutralData* neutral_data, M
   // TODO: FIX THIS !!
   double rank_xpos_0 = 0;
   double rank_ypos_0 = 0;
-  double rank_xpos_1 = 0;
-  double rank_ypos_1 = 0;
+  double rank_xpos_1 = 1;
+  double rank_ypos_1 = 1;
 
   // queue.submit([&] (cl::sycl::handler& cgh) {
   //   auto edgex_acc = mesh->edgex->get_access<cl::sycl::access::mode::read>(cgh);
@@ -86,14 +86,14 @@ void initialise_neutral_data(cl::sycl::queue queue, NeutralData* neutral_data, M
 
   allocate_host_data(neutral_data->h_energy_deposition_tally, local_nx * local_ny);
 
-  size_t allocation = allocate_data_w_host(queue, neutral_data->energy_deposition_tally,
+  size_t allocation = allocate_data_w_host(queue, &(neutral_data->energy_deposition_tally),
                                     neutral_data->h_energy_deposition_tally, local_nx * local_ny);
 
-  allocation += allocate_uint64_data(queue, neutral_data->nfacets_reduce_array,
+  allocation += allocate_uint64_data(queue, &(neutral_data->nfacets_reduce_array),
                                      neutral_data->nparticles);
-  allocation += allocate_uint64_data(queue, neutral_data->ncollisions_reduce_array,
+  allocation += allocate_uint64_data(queue, &(neutral_data->ncollisions_reduce_array),
                                      neutral_data->nparticles);
-  allocation += allocate_uint64_data(queue, neutral_data->nprocessed_reduce_array,
+  allocation += allocate_uint64_data(queue, &(neutral_data->nprocessed_reduce_array),
                                      neutral_data->nparticles);
 
   // Inject some particles into the mesh if we need to

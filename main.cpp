@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
   int nranks = 1;
   initialise_mpi(argc, argv, &rank, &nranks);
 
-  cl::sycl::default_selector device_selector;
+  cl::sycl::host_selector device_selector;
 
   auto exception_handler = [] (cl::sycl::exception_list exceptions) {
     for (std::exception_ptr const& e : exceptions) {
@@ -128,7 +128,6 @@ int main(int argc, char *argv[])
         &facet_events, &collision_events, queue);
 
     // barrier();
-
 
     gettimeofday(&timstr, NULL);
     double step_time = timstr.tv_sec + (timstr.tv_usec / 1000000.0) - w0;

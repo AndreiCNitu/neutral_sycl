@@ -14,34 +14,34 @@ void initialise_shared_data_2d(cl::sycl::queue queue,
   const int ndims = 2;
 
   // Shared shared_data
-  allocate_data(queue, shared_data->density, local_nx * local_ny);
-  allocate_data(queue, shared_data->energy, local_nx * local_ny);
+  allocate_data(queue, &(shared_data->density), local_nx * local_ny);
+  allocate_data(queue, &(shared_data->energy), local_nx * local_ny);
 
   // Currently flattening the capacity by sharing some of the shared_data
   // containers
   // between the different solves for different applications. This might not
   // be maintainable and/or desirable but seems like a reasonable optimisation
   // for now...
-  allocate_data(queue, shared_data->density_old, local_nx * local_ny);
+  allocate_data(queue, &(shared_data->density_old), local_nx * local_ny);
   // shared_data->Ap = shared_data->density_old;
 
-  allocate_data(queue, shared_data->s_x, (local_nx + 1) * (local_ny + 1));
+  allocate_data(queue, &(shared_data->s_x), (local_nx + 1) * (local_ny + 1));
   // shared_data->Qxx = shared_data->s_x;
 
-  allocate_data(queue, shared_data->s_y, (local_nx + 1) * (local_ny + 1));
+  allocate_data(queue, &(shared_data->s_y), (local_nx + 1) * (local_ny + 1));
   // shared_data->Qyy = shared_data->s_y;
 
-  allocate_data(queue, shared_data->r, local_nx * local_ny);
+  allocate_data(queue, &(shared_data->r), local_nx * local_ny);
   // shared_data->pressure = shared_data->r;
 
-  allocate_data(queue, shared_data->temperature, (local_nx + 1) * (local_ny + 1));
+  allocate_data(queue, &(shared_data->temperature), (local_nx + 1) * (local_ny + 1));
   // shared_data->u = shared_data->temperature;
 
-  allocate_data(queue, shared_data->p, (local_nx + 1) * (local_ny + 1));
+  allocate_data(queue, &(shared_data->p), (local_nx + 1) * (local_ny + 1));
   // shared_data->v = shared_data->p;
 
-  allocate_data(queue, shared_data->reduce_array0, (local_nx + 1) * (local_ny + 1));
-  allocate_data(queue, shared_data->reduce_array1, (local_nx + 1) * (local_ny + 1));
+  allocate_data(queue, &(shared_data->reduce_array0), (local_nx + 1) * (local_ny + 1));
+  allocate_data(queue, &(shared_data->reduce_array1), (local_nx + 1) * (local_ny + 1));
 
   set_problem_2d(queue,
                  local_nx, local_ny, pad, mesh_width, mesh_height, edgex, edgey,

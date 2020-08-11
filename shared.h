@@ -58,12 +58,12 @@ extern "C" {
 #endif
 
 // Allocation and deallocation routines (these need templating away)
-size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, size_t len);
-size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>* buf, double* h_buf, size_t len);
-size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>* buf, size_t len);
-size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, size_t len);
-size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>* buf, int* h_buf, size_t len);
-size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>* buf, const size_t len);
+size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>** buf, size_t len);
+size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>** buf, double* h_buf, size_t len);
+size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>** buf, size_t len);
+size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, size_t len);
+size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, int* h_buf, size_t len);
+size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>** buf, const size_t len);
 
 void allocate_host_data(double* buf, size_t len);
 void allocate_host_float_data(float* buf, size_t len);
