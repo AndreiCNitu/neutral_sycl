@@ -151,11 +151,11 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
     }
 
     ungetc(ch, fp);
-    fscanf(fp, "%lf", h_keys[ii]);
+    fscanf(fp, "%lf", &h_keys[ii]);
     while ((ch = fgetc(fp)) == ' ') {
     };
     ungetc(ch, fp);
-    fscanf(fp, "%lf", h_values[ii]);
+    fscanf(fp, "%lf", &h_values[ii]);
   }
 
   // TODO:
