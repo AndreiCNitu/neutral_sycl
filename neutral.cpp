@@ -654,7 +654,7 @@ size_t inject_particles(cl::sycl::queue queue,
         particles_acc[idx].dt_to_census = dt;
         particles_acc[idx].mfp_to_collision = 0.0;
         particles_acc[idx].dead = 0;
-      });
+    });
   });
 
   STOP_PROFILING(&compute_profile, "initialising particles");

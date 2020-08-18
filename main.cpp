@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 
   std::cout << "bef bar " << std::endl;
   // Make sure initialisation phase is complete
-  barrier();
+  // barrier();
   std::cout << "aft bar " << std::endl;
 
  // Main timestep loop where we will track each particle through time
