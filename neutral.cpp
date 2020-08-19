@@ -29,7 +29,6 @@ void solve_transport_2d(
     const uint64_t master_key, const int pad, const int x_off, const int y_off,
     const double dt, const int ntotal_particles,
     int* nparticles,
-    const int* neighbours,
     cl::sycl::buffer<Particle, 1>* particles,
     cl::sycl::buffer<double, 1>* density,
     cl::sycl::buffer<double, 1>* edgex,
@@ -46,9 +45,6 @@ void solve_transport_2d(
     return;
   }
 
-  // Reduction struct .... TODO?
-  // handle_particles::value_type result;
-
   cl::sycl::buffer<double, 1>* cs_scatter_keys = cs_scatter_table->keys;
   cl::sycl::buffer<double, 1>* cs_scatter_values = cs_scatter_table->values;
   const int cs_scatter_nentries = cs_scatter_table->nentries;
@@ -57,12 +53,8 @@ void solve_transport_2d(
   const int cs_absorb_nentries = cs_absorb_table->nentries;
 
   queue.submit([&] (cl::sycl::handler& cgh) {
-    // TODO: different access modifiers?
     auto particles_acc = particles->get_access<cl::sycl::access::mode::read_write>(cgh);
-    // TODO name
     auto energy_deposition_tally_acc = energy_deposition_tally->get_access<cl::sycl::access::mode::read_write>(cgh);
-
-    // TODO the 3 reduction arrays, after validation is passed!
 
     auto density_acc = density->get_access<cl::sycl::access::mode::read>(cgh);
     auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
@@ -73,7 +65,7 @@ void solve_transport_2d(
     auto cs_absorb_keys_acc = cs_absorb_keys->get_access<cl::sycl::access::mode::read>(cgh);
     auto cs_absorb_values_acc = cs_absorb_values->get_access<cl::sycl::access::mode::read>(cgh);
 
-    cgh.parallel_for<class solve_transport_2d_kernel>(cl::sycl::range<1>(*nparticles), [=](cl::sycl::nd_item<1> item) {
+    cgh.parallel_for<class solve_transport_2d_kernel>(cl::sycl::range<1>(*nparticles), [=](cl::sycl::item<1> item) {
 
       int result = PARTICLE_CONTINUE;
 
@@ -83,11 +75,9 @@ void solve_transport_2d(
       //      - the particle will scatter (this means the energy changes)
       // (3) particle encounters boundary region, transports to another cell
 
-      cl::sycl::id<1> idx = item.get_global_id(); // TODO: might not work everywhere
+      cl::sycl::id<1> idx = item.get_id();
 
       if (!particles_acc[idx].dead) {
-
-        // TODO reduction_result.nparticles += 1;
 
         int x_facet = 0;
         int absorb_cs_index = -1;
@@ -144,9 +134,6 @@ void solve_transport_2d(
           if (distance_to_collision < distance_to_facet &&
               distance_to_collision < distance_to_census) {
 
-            // Track the total number of collisions
-            // TODO reduction_result.collisions += 1;
-
             // Handles a collision event
             result = collision_event(
                 global_nx, nx, x_off, y_off, idx[0], master_key,
@@ -165,13 +152,10 @@ void solve_transport_2d(
           // Check if we have reached facet
           else if (distance_to_facet < distance_to_census) {
 
-            // Track the number of fact encounters
-            // TODO reduction_result.facets += 1;
-
             result = facet_event(
                 global_nx, global_ny, nx, ny, x_off, y_off,
                 inv_ntotal_particles, distance_to_facet, speed, cell_mfp,
-                x_facet, density_acc, neighbours, particles_acc, &energy_deposition,
+                x_facet, density_acc, particles_acc, &energy_deposition,
                 &number_density, &microscopic_cs_scatter,
                 &microscopic_cs_absorb, &macroscopic_cs_scatter,
                 &macroscopic_cs_absorb, energy_deposition_tally_acc, &cellx,
@@ -196,21 +180,7 @@ void solve_transport_2d(
     });
   });
 
-  // // TODO Call reduction
-  // handle_particles f(global_nx, global_ny, nx, ny, master_key, pad, x_off, y_off,
-  //                     1, dt, neighbours, density, edgex, edgey,
-  //                     ntotal_particles, particles, cs_scatter_keys,
-  //                     cs_scatter_values, cs_scatter_nentries, cs_absorb_keys,
-  //                     cs_absorb_values, cs_absorb_nentries, energy_deposition_tally);
-  // Kokkos::parallel_reduce("reduction", *nparticles, f, result);
-
-  // TODO? Kokkos::fence();
-
-
-  // TODO *facet_events += result.facets;
-  // TODO *collision_events += result.collisions;
-
-  printf("Particles  %llu\n", 70707070); // TODO result.nparticles);
+  printf("Particles  %llu\n", 70707070);
 }
 
 // Handles a collision event
@@ -327,7 +297,6 @@ inline int facet_event(const int global_nx, const int global_ny, const int nx,
                 const double inv_ntotal_particles, const double distance_to_facet,
                 const double speed, const double cell_mfp, const int x_facet,
                 read_accessor_t density_acc,
-                const int* neighbours,
                 particle_accessor_t particles_acc,
                 double* energy_deposition,
                 double* number_density,

@@ -13,7 +13,6 @@ void solve_transport_2d(
     const uint64_t master_key, const int pad, const int x_off, const int y_off,
     const double dt, const int ntotal_particles,
     int* nparticles,
-    const int* neighbours,
     cl::sycl::buffer<Particle, 1>* particles,
     cl::sycl::buffer<double, 1>* density,
     cl::sycl::buffer<double, 1>* edgex,
