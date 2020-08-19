@@ -102,7 +102,7 @@ void solve_transport_2d(
         double macroscopic_cs_absorb =
             number_density * microscopic_cs_absorb * BARNS;
         double speed =
-            sqrt((2.0 * particles_acc[idx].energy * eV_TO_J) / PARTICLE_MASS);
+            cl::sycl::sqrt((2.0 * particles_acc[idx].energy * eV_TO_J) / PARTICLE_MASS);
         double energy_deposition = 0.0;
 
         const double inv_ntotal_particles = 1.0 / (double)ntotal_particles;
@@ -113,7 +113,7 @@ void solve_transport_2d(
         // Set time to census and MFPs until collision
         particles_acc[idx].dt_to_census = dt;
         generate_random_numbers(idx[0], master_key, counter++, &rn[0], &rn[1]);
-        particles_acc[idx].mfp_to_collision = -log(rn[0]) / macroscopic_cs_scatter;
+        particles_acc[idx].mfp_to_collision = -cl::sycl::log(rn[0]) / macroscopic_cs_scatter;
 
         // Loop until we have reached census
         while (particles_acc[idx].dt_to_census > 0.0) {
@@ -259,11 +259,11 @@ inline int collision_event(
                          ((MASS_NO + 1.0) * (MASS_NO + 1.0));
 
     // Convert the angle into the laboratory frame of reference
-    double cos_theta = 0.5 * ((MASS_NO + 1.0) * sqrt(e_new / particles_acc[idx].energy) -
-                              (MASS_NO - 1.0) * sqrt(particles_acc[idx].energy / e_new));
+    double cos_theta = 0.5 * ((MASS_NO + 1.0) * cl::sycl::sqrt(e_new / particles_acc[idx].energy) -
+                              (MASS_NO - 1.0) * cl::sycl::sqrt(particles_acc[idx].energy / e_new));
 
     // Alter the direction of the velocities
-    const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    const double sin_theta = cl::sycl::sqrt(1.0 - cos_theta * cos_theta);
     const double omega_x_new =
         (particles_acc[idx].omega_x * cos_theta - particles_acc[idx].omega_y * sin_theta);
     const double omega_y_new =
@@ -284,9 +284,9 @@ inline int collision_event(
 
   // Re-sample number of mean free paths to collision
   generate_random_numbers(pkey, master_key, (*counter)++, &rn[0], &rn[1]);
-  particles_acc[idx].mfp_to_collision = -log(rn[0]) / *macroscopic_cs_scatter;
+  particles_acc[idx].mfp_to_collision = -cl::sycl::log(rn[0]) / *macroscopic_cs_scatter;
   particles_acc[idx].dt_to_census -= distance_to_collision / *speed;
-  *speed = sqrt((2.0 * particles_acc[idx].energy * eV_TO_J) / PARTICLE_MASS);
+  *speed = cl::sycl::sqrt((2.0 * particles_acc[idx].energy * eV_TO_J) / PARTICLE_MASS);
 
   return PARTICLE_CONTINUE;
 }
@@ -611,8 +611,8 @@ size_t inject_particles(cl::sycl::queue queue,
         // same value which introduces very very very small bias...
         generate_random_numbers(idx.get(0), 0, 1, &rn[0], &rn[1]);
         const double theta = 2.0 * M_PI * rn[0];
-        particles_acc[idx].omega_x = cos(theta);
-        particles_acc[idx].omega_y = sin(theta);
+        particles_acc[idx].omega_x = cl::sycl::cos(theta);
+        particles_acc[idx].omega_y = cl::sycl::sin(theta);
 
         // This approximation sets mono-energetic initial state for source
         // particles
