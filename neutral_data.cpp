@@ -158,6 +158,9 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
     fscanf(fp, "%lf", &h_values[ii]);
   }
 
+  allocate_data_w_host(queue, &(cs->keys), h_keys, cs->nentries);
+  allocate_data_w_host(queue, &(cs->values), h_values, cs->nentries);
+
   // TODO:
   //move_host_buffer_to_device(queue, cs->nentries, h_keys, &cs->keys);
   //move_host_buffer_to_device(queue, cs->nentries, h_values, &cs->values);
@@ -167,6 +170,7 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
 void initialise_cross_sections(cl::sycl::queue queue, NeutralData* neutral_data, Mesh* mesh) {
   neutral_data->cs_scatter_table = (CrossSection*)malloc(sizeof(CrossSection));
   neutral_data->cs_absorb_table = (CrossSection*)malloc(sizeof(CrossSection));
+
   read_cs_file(queue, CS_SCATTER_FILENAME, neutral_data->cs_scatter_table, mesh);
   read_cs_file(queue, CS_CAPTURE_FILENAME, neutral_data->cs_absorb_table, mesh);
 }

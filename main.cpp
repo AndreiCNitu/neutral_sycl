@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
         mesh.dt, neutral_data.nparticles, &neutral_data.nlocal_particles,
         neutral_data.local_particles,
         shared_data.density, mesh.edgex, mesh.edgey,
-        neutral_data.cs_scatter_table, neutral_data.cs_absorb_table,
+        &(neutral_data.cs_scatter_table), &(neutral_data.cs_absorb_table),
         neutral_data.energy_deposition_tally,
         &facet_events, &collision_events, queue);
 

@@ -33,8 +33,8 @@ void solve_transport_2d(
     cl::sycl::buffer<double, 1>* density,
     cl::sycl::buffer<double, 1>* edgex,
     cl::sycl::buffer<double, 1>* edgey,
-    CrossSection* cs_scatter_table,
-    CrossSection* cs_absorb_table,
+    CrossSection** cs_scatter_table,
+    CrossSection** cs_absorb_table,
     cl::sycl::buffer<double, 1>* energy_deposition_tally,
     uint64_t* facet_events,
     uint64_t* collision_events,
@@ -45,12 +45,12 @@ void solve_transport_2d(
     return;
   }
 
-  cl::sycl::buffer<double, 1>* cs_scatter_keys = cs_scatter_table->keys;
-  cl::sycl::buffer<double, 1>* cs_scatter_values = cs_scatter_table->values;
-  const int cs_scatter_nentries = cs_scatter_table->nentries;
-  cl::sycl::buffer<double, 1>* cs_absorb_keys = cs_absorb_table->keys;
-  cl::sycl::buffer<double, 1>* cs_absorb_values = cs_absorb_table->values;
-  const int cs_absorb_nentries = cs_absorb_table->nentries;
+  cl::sycl::buffer<double, 1> cs_scatter_keys = *((*cs_scatter_table)->keys);
+  cl::sycl::buffer<double, 1>* cs_scatter_values = (*cs_scatter_table)->values;
+  const int cs_scatter_nentries = (*cs_scatter_table)->nentries;
+  cl::sycl::buffer<double, 1>* cs_absorb_keys = (*cs_absorb_table)->keys;
+  cl::sycl::buffer<double, 1>* cs_absorb_values = (*cs_absorb_table)->values;
+  const int cs_absorb_nentries = (*cs_absorb_table)->nentries;
 
   queue.submit([&] (cl::sycl::handler& cgh) {
     auto particles_acc = particles->get_access<cl::sycl::access::mode::read_write>(cgh);
@@ -60,7 +60,7 @@ void solve_transport_2d(
     auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
     auto edgey_acc = edgey->get_access<cl::sycl::access::mode::read>(cgh);
 
-    auto cs_scatter_keys_acc = cs_scatter_keys->get_access<cl::sycl::access::mode::read>(cgh);
+    auto cs_scatter_keys_acc = cs_scatter_keys.get_access<cl::sycl::access::mode::read>(cgh);
     auto cs_scatter_values_acc = cs_scatter_values->get_access<cl::sycl::access::mode::read>(cgh);
     auto cs_absorb_keys_acc = cs_absorb_keys->get_access<cl::sycl::access::mode::read>(cgh);
     auto cs_absorb_values_acc = cs_absorb_values->get_access<cl::sycl::access::mode::read>(cgh);
