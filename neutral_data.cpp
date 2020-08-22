@@ -41,23 +41,16 @@ void initialise_neutral_data(cl::sycl::queue queue, NeutralData* neutral_data, M
   const double source_width = values[nkeys - 2] * mesh->width;
   const double source_height = values[nkeys - 1] * mesh->height;
 
-  // TODO: FIX THIS !!
-  double rank_xpos_0 = 0;
-  double rank_ypos_0 = 0;
-  double rank_xpos_1 = 1;
-  double rank_ypos_1 = 1;
-
-  // queue.submit([&] (cl::sycl::handler& cgh) {
-  //   auto edgex_acc = mesh->edgex->get_access<cl::sycl::access::mode::read>(cgh);
-  //   auto edgey_acc = mesh->edgey->get_access<cl::sycl::access::mode::read>(cgh);
-  //
-  //   cgh.single_task<class init_ranks_kernel>( [=]() {
-  //     rank_xpos_0 = edgex_acc[mesh->x_off + pad];
-  //     rank_ypos_0 = edgey_acc[mesh->y_off + pad];
-  //     rank_xpos_1 = edgex_acc[local_nx + mesh->x_off + pad];
-  //     rank_ypos_1 = edgey_acc[local_ny + mesh->y_off + pad];
-  //   });
-  // });
+  double rank_xpos_0 =10;
+  double rank_ypos_0 =11;
+  double rank_xpos_1 =60;
+  double rank_ypos_1 =75;
+  auto edgex_acc = mesh->edgex->get_access<cl::sycl::access::mode::read>();
+  auto edgey_acc = mesh->edgey->get_access<cl::sycl::access::mode::read>();
+  rank_xpos_0 = edgex_acc[mesh->x_off + pad];
+  rank_ypos_0 = edgey_acc[mesh->y_off + pad];
+  rank_xpos_1 = edgex_acc[local_nx + mesh->x_off + pad];
+  rank_ypos_1 = edgey_acc[local_ny + mesh->y_off + pad];
 
   // Calculate the shaded bounds
   const double local_particle_left_off = max(0.0, source_xpos - rank_xpos_0);

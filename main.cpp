@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
   int nranks = 1;
   initialise_mpi(argc, argv, &rank, &nranks);
 
-  cl::sycl::host_selector device_selector;
+  cl::sycl::default_selector device_selector;
 
   auto exception_handler = [] (cl::sycl::exception_list exceptions) {
     for (std::exception_ptr const& e : exceptions) {
@@ -42,7 +42,6 @@ int main(int argc, char *argv[])
             << queue.get_device().get_info<cl::sycl::info::device::name>()
             << std::endl;
 
-  {
   // Store the dimensions of the mesh
   Mesh mesh;
   NeutralData neutral_data;
@@ -64,6 +63,9 @@ int main(int argc, char *argv[])
   mesh.nranks = nranks;
   mesh.ndims = 2;
 
+  SharedData shared_data;
+
+  {
 // TODO: Won't work on GPUs
 // Get the number of threads and initialise the random number pool
 // #pragma omp parallel
@@ -81,7 +83,6 @@ int main(int argc, char *argv[])
   // Perform the general initialisation steps for the mesh etc
   initialise_comms(&mesh);
   initialise_mesh_2d(queue, &mesh);
-  SharedData shared_data;
   initialise_shared_data_2d(queue, mesh.local_nx, mesh.local_ny, mesh.pad, mesh.width,
       mesh.height, neutral_data.neutral_params_filename, mesh.edgex, mesh.edgey, &shared_data);
 
