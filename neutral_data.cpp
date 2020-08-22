@@ -154,6 +154,12 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
   allocate_data_w_host(queue, &(cs->keys), h_keys, cs->nentries);
   allocate_data_w_host(queue, &(cs->values), h_values, cs->nentries);
 
+  auto cs_keys_acc = cs->keys->get_access<cl::sycl::access::mode::write>();
+  auto cs_values_acc = cs->values->get_access<cl::sycl::access::mode::write>();
+  for (int kk = 0; kk < cs->nentries; ++kk) {
+    cs_keys_acc[kk] = h_keys[kk];
+    cs_values_acc[kk] = h_values[kk];
+  }
   // TODO:
   //move_host_buffer_to_device(queue, cs->nentries, h_keys, &cs->keys);
   //move_host_buffer_to_device(queue, cs->nentries, h_values, &cs->values);
