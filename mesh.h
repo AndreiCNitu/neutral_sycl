@@ -62,35 +62,6 @@ typedef struct {
   int nranks;                  // Total number of ranks that exist
   int neighbours[NNEIGHBOURS]; // List of neighbours
   int ndims;                   // The number of dimensions
-
-  // Buffers for MPI communication
-  cl::sycl::buffer<double, 1>* north_buffer_out;
-  cl::sycl::buffer<double, 1>* east_buffer_out;
-  cl::sycl::buffer<double, 1>* south_buffer_out;
-  cl::sycl::buffer<double, 1>* west_buffer_out;
-  cl::sycl::buffer<double, 1>* front_buffer_out;
-  cl::sycl::buffer<double, 1>* back_buffer_out;
-  cl::sycl::buffer<double, 1>* north_buffer_in;
-  cl::sycl::buffer<double, 1>* east_buffer_in;
-  cl::sycl::buffer<double, 1>* south_buffer_in;
-  cl::sycl::buffer<double, 1>* west_buffer_in;
-  cl::sycl::buffer<double, 1>* front_buffer_in;
-  cl::sycl::buffer<double, 1>* back_buffer_in;
-
-  // Host copies of buffers for MPI communication
-  // Note that these are only allocated when the model requires them, e.g. CUDA
-  double* h_north_buffer_out;
-  double* h_east_buffer_out;
-  double* h_south_buffer_out;
-  double* h_west_buffer_out;
-  double* h_front_buffer_out;
-  double* h_back_buffer_out;
-  double* h_north_buffer_in;
-  double* h_east_buffer_in;
-  double* h_south_buffer_in;
-  double* h_west_buffer_in;
-  double* h_front_buffer_in;
-  double* h_back_buffer_in;
 } Mesh;
 
 // Initialises the mesh
