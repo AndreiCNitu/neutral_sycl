@@ -151,8 +151,8 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
     fscanf(fp, "%lf", &h_values[ii]);
   }
 
-  allocate_data_w_host(queue, &(cs->keys), h_keys, cs->nentries);
-  allocate_data_w_host(queue, &(cs->values), h_values, cs->nentries);
+  allocate_data(queue, &(cs->keys), cs->nentries);
+  allocate_data(queue, &(cs->values), cs->nentries);
 
   auto cs_keys_acc = cs->keys->get_access<cl::sycl::access::mode::write>();
   auto cs_values_acc = cs->values->get_access<cl::sycl::access::mode::write>();

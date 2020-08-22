@@ -1,5 +1,5 @@
 COMPUTECPP_FLAGS = $(shell $(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/computecpp_info --dump-device-compiler-flags)
-FLAGS= -O0 -g
+FLAGS= -O2
 EXTRA_FLAGS=
 
 # ComputeCpp
@@ -64,57 +64,57 @@ neutral_data.o : neutral_data.cpp neutral_data.sycl
 	-I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -include neutral_data.sycl $(EXTRA_FLAGS) -o $@
 
 main.sycl : main.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	main.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 params.sycl : params.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	params.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 profiler.sycl : profiler.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	profiler.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 comms.sycl : comms.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	comms.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 shared.sycl : shared.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	shared.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 data.sycl : data.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	data.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 mesh.sycl : mesh.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	mesh.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 shared_data.sycl : shared_data.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	shared_data.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 halos.sycl : halos.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	halos.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 neutral.sycl : neutral.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	neutral.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 
 neutral_data.sycl : neutral_data.cpp
-	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
+	$(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/compute++ $(FLAGS) -no-serial-memop -DSYCL -DCL_TARGET_OPENCL_VERSION=220 \
 	neutral_data.cpp \
 	$(COMPUTECPP_FLAGS) -c -I$(COMPUTECPP_PACKAGE_ROOT_DIR)/include -o $@
 

@@ -317,8 +317,8 @@ void set_problem_2d(cl::sycl::queue queue,
     // copy_int_buffer_SEND(MAX_KEYS, &h_keys, &d_keys);
     // copy_buffer_SEND(MAX_KEYS, &h_values, &d_values);
 
-    allocate_int_data_w_host(queue, &d_keys, h_keys, MAX_KEYS);
-    allocate_data_w_host(queue, &d_values, h_values, MAX_KEYS);
+    allocate_int_data(queue, &d_keys, MAX_KEYS);
+    allocate_data(queue, &d_values, MAX_KEYS);
 
     auto d_keys_acc = d_keys->get_access<cl::sycl::access::mode::write>();
     auto d_values_acc = d_values->get_access<cl::sycl::access::mode::write>();

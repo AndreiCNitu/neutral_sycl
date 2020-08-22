@@ -52,6 +52,7 @@ void solve_transport_2d(
   cl::sycl::buffer<double, 1>* cs_absorb_values = (*cs_absorb_table)->values;
   const int cs_absorb_nentries = (*cs_absorb_table)->nentries;
 
+  try {
   queue.submit([&] (cl::sycl::handler& cgh) {
     auto particles_acc = particles->get_access<cl::sycl::access::mode::read_write>(cgh);
     auto energy_deposition_tally_acc = energy_deposition_tally->get_access<cl::sycl::access::mode::read_write>(cgh);
@@ -179,8 +180,11 @@ void solve_transport_2d(
       }
     });
   });
-
-  printf("Particles  %llu\n", 70707070);
+  } catch (const cl::sycl::exception& e) {
+        std::cout << "Caught SYCL exception when running kernelul muist:"
+                  << std::endl << e.what() << std::endl;
+      }
+  printf("Particles  %llu\n", *nparticles);
 }
 
 // Handles a collision event
