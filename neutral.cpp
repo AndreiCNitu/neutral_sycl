@@ -180,6 +180,7 @@ void solve_transport_2d(
       }
     });
   });
+  queue.wait_and_throw();
   } catch (const cl::sycl::exception& e) {
         std::cout << "Caught SYCL exception when running kernelul muist:"
                   << std::endl << e.what() << std::endl;
@@ -521,12 +522,13 @@ inline double microscopic_cs_for_energy(read_accessor_t keys,
 
 // Validates the results of the simulation
 void validate(const int nx, const int ny, const char* params_filename,
-              const int rank, double* energy_deposition_tally) {
+              const int rank, cl::sycl::buffer<double, 1>* energy_deposition_tally) {
 
   double global_energy_tally = 0.0;
+  auto energy_deposition_tally_acc = energy_deposition_tally->get_access<cl::sycl::access::mode::write>();
 
   for(int ii = 0; ii < nx * ny; ii++) {
-    global_energy_tally += energy_deposition_tally[ii];
+    global_energy_tally += energy_deposition_tally_acc[ii];
   }
 
   if (rank != MASTER) {

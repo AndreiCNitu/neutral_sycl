@@ -65,13 +65,13 @@ int main(int argc, char *argv[])
 
   SharedData shared_data;
 
+auto num_groups = queue.get_device().get_info<cl::sycl::info::device::max_compute_units>();
+auto work_group_size = queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
+auto total_threads = num_groups * work_group_size;
+neutral_data.nthreads = total_threads;
   {
-// TODO: Won't work on GPUs
-// Get the number of threads and initialise the random number pool
-// #pragma omp parallel
-   neutral_data.nthreads = 512; // omp_get_num_threads(); }
 
-  printf("Starting up with %d OpenMP threads.\n", neutral_data.nthreads);
+  printf("Starting up with %d threads.\n", neutral_data.nthreads);
   printf("Loading problem from %s.\n", neutral_data.neutral_params_filename);
 #ifdef ENABLE_PROFILING
   // The timing code has to be called so many times that the API calls
@@ -152,16 +152,15 @@ int main(int argc, char *argv[])
     }
   }
 
-  validate(mesh.local_nx - 2 * mesh.pad, mesh.local_ny - 2 * mesh.pad,
-           neutral_data.neutral_params_filename, mesh.rank,
-           neutral_data.h_energy_deposition_tally);
-
   if (mesh.rank == MASTER) {
     PRINT_PROFILING_RESULTS(&p);
 
     printf("Final Wallclock %.9fs\n", wallclock);
     // printf("Elapsed Simulation Time %.6fs\n", elapsed_sim_time);
   }
+    validate(mesh.local_nx - 2 * mesh.pad, mesh.local_ny - 2 * mesh.pad,
+           neutral_data.neutral_params_filename, mesh.rank,
+           neutral_data.energy_deposition_tally);
 }
 
 

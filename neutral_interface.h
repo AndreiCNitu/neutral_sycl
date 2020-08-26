@@ -40,7 +40,7 @@ size_t inject_particles(cl::sycl::queue queue,
 
 // Validates the results of the simulation
 void validate(const int nx, const int ny, const char* params_filename,
-              const int rank, double* energy_deposition_tally);
+              const int rank, cl::sycl::buffer<double, 1>* energy_deposition_tally);
 
 #ifdef __cplusplus
 }

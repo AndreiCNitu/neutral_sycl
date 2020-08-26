@@ -1,5 +1,5 @@
 COMPUTECPP_FLAGS = $(shell $(COMPUTECPP_PACKAGE_ROOT_DIR)/bin/computecpp_info --dump-device-compiler-flags)
-FLAGS= -O2
+FLAGS= -Ofast -w
 EXTRA_FLAGS=
 
 # ComputeCpp
