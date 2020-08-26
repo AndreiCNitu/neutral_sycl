@@ -6,6 +6,9 @@
 #include "shared.h"
 #include "shared_data.h"
 #include "comms.h"
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #ifdef MPI
 #include "mpi.h"
 #endif
@@ -19,12 +22,26 @@ int main(int argc, char *argv[])
 
   int rank = MASTER;
   int nranks = 1;
-
   initialise_mpi(argc, argv, &rank, &nranks);
 
+  cl::sycl::default_selector device_selector;
 
-  Kokkos::initialize();
-  {
+  auto exception_handler = [] (cl::sycl::exception_list exceptions) {
+    for (std::exception_ptr const& e : exceptions) {
+      try {
+        std::rethrow_exception(e);
+      } catch(cl::sycl::exception const& e) {
+        std::cout << "Caught asynchronous SYCL exception:"
+                  << std::endl << e.what() << std::endl;
+      }
+    }
+  };
+
+  cl::sycl::queue queue(device_selector, exception_handler, {});
+  std::cout << "Running on "
+            << queue.get_device().get_info<cl::sycl::info::device::name>()
+            << std::endl;
+
   // Store the dimensions of the mesh
   Mesh mesh;
   NeutralData neutral_data;
@@ -46,33 +63,33 @@ int main(int argc, char *argv[])
   mesh.nranks = nranks;
   mesh.ndims = 2;
 
-// Get the number of threads and initialise the random number pool
-#pragma omp parallel
-  { neutral_data.nthreads = omp_get_num_threads(); }
+  SharedData shared_data;
 
-  printf("Starting up with %d OpenMP threads.\n", neutral_data.nthreads);
+auto num_groups = queue.get_device().get_info<cl::sycl::info::device::max_compute_units>();
+auto work_group_size = queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
+auto total_threads = num_groups * work_group_size;
+neutral_data.nthreads = total_threads;
+  {
+
+  printf("Starting up with %d threads.\n", neutral_data.nthreads);
   printf("Loading problem from %s.\n", neutral_data.neutral_params_filename);
 #ifdef ENABLE_PROFILING
-  /* The timing code has to be called so many times that the API calls
-   * actually begin to influence the performance dramatically. */
+  // The timing code has to be called so many times that the API calls
+  // actually begin to influence the performance dramatically.
   fprintf(stderr,
           "Warning. Profiling is enabled and will increase the runtime.\n\n");
 #endif
 
   // Perform the general initialisation steps for the mesh etc
   initialise_comms(&mesh);
-  initialise_mesh_2d(&mesh);
-  SharedData shared_data;
-  initialise_shared_data_2d(mesh.local_nx, mesh.local_ny, mesh.pad, mesh.width,
+  initialise_mesh_2d(queue, &mesh);
+  initialise_shared_data_2d(queue, mesh.local_nx, mesh.local_ny, mesh.pad, mesh.width,
       mesh.height, neutral_data.neutral_params_filename, mesh.edgex, mesh.edgey, &shared_data);
 
-  handle_boundary_2d(mesh.local_nx, mesh.local_ny, &mesh, shared_data.density,
+  handle_boundary_2d(queue, mesh.local_nx, mesh.local_ny, &mesh, shared_data.density,
                      NO_INVERT, PACK);
 
-  initialise_neutral_data(&neutral_data, &mesh);
-
-  // Make sure initialisation phase is complete
-  barrier();
+  initialise_neutral_data(queue, &neutral_data, &mesh);
 
  // Main timestep loop where we will track each particle through time
   int tt;
@@ -87,32 +104,33 @@ int main(int argc, char *argv[])
     uint64_t facet_events = 0;
     uint64_t collision_events = 0;
 
-    double w0 = omp_get_wtime();
+    struct  timeval timstr; /* structure to hold elapsed time */
+    struct  rusage ru;      /* structure to hold CPU time--system and user */
+    double  tic, toc;       /* floating point numbers to calculate elapsed wallclock time */
+    double  usrtim;         /* floating point number to record elapsed user CPU time */
+    double  systim;         /* floating point number to record elapsed system CPU time */
+
+    gettimeofday(&timstr, NULL);
+    double w0 = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
     // Begin the main solve step
     solve_transport_2d(
         mesh.local_nx - 2 * mesh.pad, mesh.local_ny - 2 * mesh.pad,
         mesh.global_nx, mesh.global_ny, tt, mesh.pad, mesh.x_off, mesh.y_off,
         mesh.dt, neutral_data.nparticles, &neutral_data.nlocal_particles,
-        mesh.neighbours, neutral_data.local_particles,
-        shared_data.density, mesh.edgex, mesh.edgey, mesh.edgedx, mesh.edgedy,
-        neutral_data.cs_scatter_table, neutral_data.cs_absorb_table,
-        neutral_data.energy_deposition_tally, neutral_data.nfacets_reduce_array,
-        neutral_data.ncollisions_reduce_array, neutral_data.nprocessed_reduce_array,
-        &facet_events, &collision_events);
+        neutral_data.local_particles,
+        shared_data.density, mesh.edgex, mesh.edgey,
+        &(neutral_data.cs_scatter_table), &(neutral_data.cs_absorb_table),
+        neutral_data.energy_deposition_tally,
+        &facet_events, &collision_events, queue);
 
-    barrier();
-
-    double step_time = omp_get_wtime() - w0;
+    gettimeofday(&timstr, NULL);
+    double step_time = timstr.tv_sec + (timstr.tv_usec / 1000000.0) - w0;
     wallclock += step_time;
     printf("Step time  %.4fs\n", step_time);
     printf("Wallclock  %.4fs\n", wallclock);
     printf("Facets     %lu\n", facet_events);
     printf("Collisions %lu\n", collision_events);
-
-    // Note that this metric is only valid in the single event case
-    printf("Facet Events / s %.2e\n", facet_events / step_time);
-    printf("Collision Events / s %.2e\n", collision_events / step_time);
 
     elapsed_sim_time += mesh.dt;
 
@@ -124,19 +142,16 @@ int main(int argc, char *argv[])
     }
   }
 
-  validate(mesh.local_nx - 2 * mesh.pad, mesh.local_ny - 2 * mesh.pad,
-           neutral_data.neutral_params_filename, mesh.rank,
-           neutral_data.energy_deposition_tally);
-
   if (mesh.rank == MASTER) {
     PRINT_PROFILING_RESULTS(&p);
 
     printf("Final Wallclock %.9fs\n", wallclock);
-    printf("Elapsed Simulation Time %.6fs\n", elapsed_sim_time);
   }
+    validate(mesh.local_nx - 2 * mesh.pad, mesh.local_ny - 2 * mesh.pad,
+           neutral_data.neutral_params_filename, mesh.rank,
+           neutral_data.energy_deposition_tally);
+}
 
-  }
-  Kokkos::finalize();
 
   return 0;
 }

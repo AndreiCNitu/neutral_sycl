@@ -6,239 +6,262 @@
 #include <math.h>
 #include <stdlib.h>
 
+class allocate_data_kernel;
+class allocate_data_w_host_kernel;
+class allocate_float_data_kernel;
+class allocate_int_data_kernel;
+class allocate_int_data_w_host_kernel;
+class allocate_uint64_data;
+class edgedx_init_kernel;
+class celldx_init_kernel;
+class edgedy_init_kernel;
+class celldy_init_kernel;
+class set_problem_2d_kernel;
+
 // Allocates a double precision array
-size_t allocate_data(Kokkos::View<double*>* buf, size_t len) {
+size_t allocate_data(cl::sycl::queue queue, cl::sycl::buffer<double, 1>** buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    new(buf) Kokkos::View<double*>("device", len);
+    *buf = new cl::sycl::buffer<double, 1>(cl::sycl::range<1>(len));
 
-    Kokkos::View<double*> local_buf(*buf);
-    Kokkos::parallel_for(len, KOKKOS_LAMBDA (int i) {
-        local_buf[i] = 0.0;
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class allocate_data_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
+        buf_acc[idx] = 0.0f;
+      });
     });
-    Kokkos::fence();
 
     return sizeof(double) * len;
 }
 
-size_t allocate_float_data(Kokkos::View<float*>* buf, size_t len) {
+size_t allocate_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<double, 1>** buf, double* h_buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    new(buf) Kokkos::View<float*>("device", len);
+    *buf = new cl::sycl::buffer<double, 1>(h_buf, cl::sycl::range<1>(len));
 
-    Kokkos::View<float*> local_buf(*buf);
-    Kokkos::parallel_for(len, KOKKOS_LAMBDA (int i) {
-        local_buf[i] = 0.0f;
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class allocate_data_w_host_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
+        buf_acc[idx] = 0.0f;
+      });
     });
-    Kokkos::fence();
+
+    return sizeof(double) * len;
+}
+
+size_t allocate_float_data(cl::sycl::queue queue, cl::sycl::buffer<float, 1>** buf, size_t len) {
+    if(len == 0) {
+        return 0;
+    }
+
+    *buf = new cl::sycl::buffer<float, 1>(cl::sycl::range<1>(len));
+
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class allocate_float_data_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
+        buf_acc[idx] = 0.0f;
+      });
+    });
 
     return sizeof(float) * len;
 }
 
-size_t allocate_int_data(Kokkos::View<int*>* buf, size_t len) {
+size_t allocate_int_data(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    new(buf) Kokkos::View<int*>("device", len);
+    *buf = new cl::sycl::buffer<int, 1>(cl::sycl::range<1>(len));
 
-    Kokkos::View<int*> local_buf(*buf);
-    Kokkos::parallel_for(len, KOKKOS_LAMBDA (int i) {
-        local_buf[i] = 0;
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class allocate_int_data_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
+        buf_acc[idx] = 0.0f;
+      });
     });
-    Kokkos::fence();
 
     return sizeof(int) * len;
 }
 
-size_t allocate_uint64_data(Kokkos::View<uint64_t*>* buf, size_t len) {
+size_t allocate_int_data_w_host(cl::sycl::queue queue, cl::sycl::buffer<int, 1>** buf, int* h_buf, size_t len) {
     if(len == 0) {
         return 0;
     }
 
-    new(buf) Kokkos::View<uint64_t*>("device", len);
+    *buf = new cl::sycl::buffer<int, 1>(h_buf, cl::sycl::range<1>(len));
 
-    Kokkos::View<uint64_t*> local_buf(*buf);
-    Kokkos::parallel_for(len, KOKKOS_LAMBDA (int i) {
-        local_buf[i] = 0;
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class allocate_int_data_w_host_kernel>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
+        buf_acc[idx] = 0.0f;
+      });
     });
-    Kokkos::fence();
+
+    return sizeof(int) * len;
+}
+
+size_t allocate_uint64_data(cl::sycl::queue queue, cl::sycl::buffer<uint64_t, 1>** buf, size_t len) {
+    if(len == 0) {
+        return 0;
+    }
+
+    *buf = new cl::sycl::buffer<uint64_t, 1>(cl::sycl::range<1>(len));
+
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto buf_acc = (*buf)->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class allocate_uint64_data>(cl::sycl::range<1>(len), [=](cl::sycl::id<1> idx) {
+        buf_acc[idx] = 0.0f;
+      });
+    });
 
     return sizeof(uint64_t) * len;
 }
 
-// Deallocate a double array
-void deallocate_data(Kokkos::View<double*> buf) {
-    //Do nothing
-}
-
-// Deallocate a float array
-void deallocate_float_data(Kokkos::View<float*> buf) {
-    //Do nothing
-}
-
-// Deallocate an int array
-void deallocate_int_data(Kokkos::View<int*> buf) {
-    //Do nothing
-}
-
-// Deallocate an uint_64t array
-void deallocate_uint64_t_data(Kokkos::View<uint64_t*> buf) {
-    //Do nothing
-}
+// Deallocate a [..] array
+//
 
 // Allocates some double precision data
-void allocate_host_data(Kokkos::View<double*>::HostMirror* buf, const size_t len) {
+void allocate_host_data(double** buf, const size_t len) {
     if(len == 0) {
         return;
     }
 
-    new(buf) Kokkos::View<double*>::HostMirror("host", len);
+    *buf = (double*) malloc(sizeof(double) * len);
 
-    for (size_t ii = 0; ii < len; ++ii) {
-        (*buf)[ii] = 1.0;
+    for (int i = 0; i < len; ++i) {
+        (*buf)[i] = 1.0;
     }
 }
 
 // Allocates some single precision data
-void allocate_host_float_data(Kokkos::View<float*>::HostMirror* buf, const size_t len) {
+void allocate_host_float_data(float* buf, const size_t len) {
     if(len == 0) {
         return;
     }
 
-    new(buf) Kokkos::View<float*>::HostMirror("host", len);
+    buf = (float*) malloc(sizeof(float) * len);
 
-    for (size_t ii = 0; ii < len; ++ii) {
-        (*buf)[ii] = 0.0f;
+    for (int i = 0; i < len; ++i) {
+        buf[i] = 0.0f;
     }
 }
 
-void allocate_host_int_data(Kokkos::View<int*>::HostMirror* buf, const size_t len) {
+void allocate_host_int_data(int** buf, const size_t len) {
     if(len == 0) {
         return;
     }
 
-    new(buf) Kokkos::View<int*>::HostMirror("host", len);
+    *buf = (int*) malloc(sizeof(int) * len);
 
-    for (size_t ii = 0; ii < len; ++ii) {
-        (*buf)[ii] = 0;
+    for (int i = 0; i < len; ++i) {
+        (*buf)[i] = 0;
     }
 }
 
-void allocate_host_uint64_t_data(Kokkos::View<uint64_t*>::HostMirror* buf, const size_t len) {
+void allocate_host_uint64_t_data(uint64_t* buf, const size_t len) {
     if(len == 0) {
         return;
     }
 
-    new(buf) Kokkos::View<uint64_t*>::HostMirror("host", len);
+    buf = (uint64_t*) malloc(sizeof(uint64_t) * len);
 
-    for (size_t ii = 0; ii < len; ++ii) {
-        (*buf)[ii] = 0;
+    for (int i = 0; i < len; ++i) {
+        buf[i] = 0;
     }
 }
 
 // Deallocates a data array
-void deallocate_host_data(Kokkos::View<double*>::HostMirror buf) {
-    //Do nothing
-}
-
-void deallocate_host_float_data(Kokkos::View<float*>::HostMirror buf) {
-    //Do nothing
-}
-
-void deallocate_host_int_data(Kokkos::View<int*>::HostMirror buf) {
-    //Do nothing
-}
-
-void deallocate_host_uint64_t_data(Kokkos::View<uint64_t*>::HostMirror buf) {
-    //Do nothing
-}
+//
 
 // Initialises mesh data in device specific manner
-void mesh_data_init_2d(const int local_nx, const int local_ny,
+void mesh_data_init_2d(cl::sycl::queue queue,
+    const int local_nx, const int local_ny,
     const int global_nx, const int global_ny, const int pad,
     const int x_off, const int y_off, const double width,
-    const double height, Kokkos::View<double *> edgex, Kokkos::View<double *> edgey,
-    Kokkos::View<double *> edgedx, Kokkos::View<double *> edgedy, Kokkos::View<double *> celldx,
-    Kokkos::View<double *> celldy) {
+    const double height, cl::sycl::buffer<double, 1>* edgex, cl::sycl::buffer<double, 1>* edgey,
+    cl::sycl::buffer<double, 1>* edgedx, cl::sycl::buffer<double, 1>* edgedy,
+    cl::sycl::buffer<double, 1>* celldx, cl::sycl::buffer<double, 1>* celldy) {
 
-    // Simple uniform rectilinear initialisation
-    Kokkos::parallel_for(local_nx+1, KOKKOS_LAMBDA (const int ii)
-    {
-        edgedx[ii] = width / (global_nx);
+    cl::sycl::buffer<double, 1> edgedx_ = *edgedx;
+    cl::sycl::buffer<double, 1> edgex_ = *edgex;
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto edgedx_acc = edgedx_.get_access<cl::sycl::access::mode::read_write>(cgh);
+      auto edgex_acc = edgex_.get_access<cl::sycl::access::mode::discard_write>(cgh);
 
-        // Note: correcting for padding
-        edgex[ii] = edgedx[ii] * (x_off + ii - pad);
-    });
-
-
-    Kokkos::parallel_for(local_nx, KOKKOS_LAMBDA (const int ii)
-    {
-        celldx[ii] = width / (global_nx);
-    });
-
-
-    Kokkos::parallel_for(local_ny+1, KOKKOS_LAMBDA (const int ii)
-    {
-        edgedy[ii] = height / (global_ny);
+      // Simple uniform rectilinear initialisation
+      cgh.parallel_for<class edgedx_init_kernel>(cl::sycl::range<1>(local_nx+1), [=](cl::sycl::id<1> idx) {
+        edgedx_acc[idx] = width / (global_nx);
 
         // Note: correcting for padding
-        edgey[ii] = edgedy[ii] * (y_off + ii - pad);
+        edgex_acc[idx] = edgedx_acc[idx] * (x_off + idx[0] - pad);
+      });
     });
 
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto celldx_acc = celldx->get_access<cl::sycl::access::mode::discard_write>(cgh);
 
-    Kokkos::parallel_for(local_ny, KOKKOS_LAMBDA (const int ii)
-    {
-        celldy[ii] = height / (global_ny);
+      cgh.parallel_for<class celldx_init_kernel>(cl::sycl::range<1>(local_nx), [=](cl::sycl::id<1> idx) {
+        celldx_acc[idx] = width / (global_nx);
+      });
     });
-    Kokkos::fence();
+
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto edgedy_acc = edgedy->get_access<cl::sycl::access::mode::read_write>(cgh);
+      auto edgey_acc = edgey->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      // Simple uniform rectilinear initialisation
+      cgh.parallel_for<class edgedy_init_kernel>(cl::sycl::range<1>(local_ny+1), [=](cl::sycl::id<1> idx) {
+        edgedy_acc[idx] = height / (global_ny);
+
+        // Note: correcting for padding
+        edgey_acc[idx] = edgedy_acc[idx] * (y_off + idx[0] - pad);
+      });
+    });
+
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto celldy_acc = celldy->get_access<cl::sycl::access::mode::discard_write>(cgh);
+
+      cgh.parallel_for<class celldy_init_kernel>(cl::sycl::range<1>(local_ny), [=](cl::sycl::id<1> idx) {
+        celldy_acc[idx] = height / (global_ny);
+      });
+    });
 }
 
-void copy_buffer_SEND(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst) {
-    deep_copy(*dst, *src);
-}
-
-void copy_float_buffer_SEND(const size_t len, Kokkos::View<float*>::HostMirror* src, Kokkos::View<float*>* dst) {
-    deep_copy(*dst, *src);
-}
-
-void copy_int_buffer_SEND(const size_t len, Kokkos::View<int*>::HostMirror* src, Kokkos::View<int*>* dst) {
-    deep_copy(*dst, *src);
-}
-
-void copy_buffer_RECEIVE(const size_t len, Kokkos::View<double*>* src, Kokkos::View<double*>::HostMirror* dst) {
-    deep_copy(*dst, *src);
-}
-
-void move_host_buffer_to_device(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst) {
-  allocate_data(dst, len);
-  copy_buffer_SEND(len, src, dst);
-  deallocate_host_data(*src);
+void move_host_buffer_to_device(cl::sycl::queue queue,
+                                const size_t len,
+                                double* src,
+                                cl::sycl::buffer<double, 1>* dst) {
+  allocate_data_w_host(queue, &dst, src, len);
 }
 
 // Initialise state data in device specific manner
-void set_problem_2d(const int local_nx, const int local_ny, const int pad,
+void set_problem_2d(cl::sycl::queue queue,
+                    const int local_nx, const int local_ny, const int pad,
                     const double mesh_width, const double mesh_height,
-                    const Kokkos::View<double *> edgex,
-                    const Kokkos::View<double *> edgey,
+                    cl::sycl::buffer<double, 1>* edgex,
+                    cl::sycl::buffer<double, 1>* edgey,
                     const int ndims,
                     const char* problem_def_filename,
-                    Kokkos::View<double *> density,
-                    Kokkos::View<double *> energy,
-                    Kokkos::View<double *> temperature) {
+                    cl::sycl::buffer<double, 1>* density,
+                    cl::sycl::buffer<double, 1>* energy,
+                    cl::sycl::buffer<double, 1>* temperature) {
 
-    Kokkos::View<int *>::HostMirror h_keys;
-    Kokkos::View<int *> d_keys;
-    allocate_int_data(&d_keys, MAX_KEYS);
+    int* h_keys;
+    cl::sycl::buffer<int, 1>* d_keys;
     allocate_host_int_data(&h_keys, MAX_KEYS);
 
-    Kokkos::View<double *>::HostMirror h_values;
-    Kokkos::View<double *> d_values;
-    allocate_data(&d_values, MAX_KEYS);
+    double* h_values;
+    cl::sycl::buffer<double, 1>* d_values;
     allocate_host_data(&h_values, MAX_KEYS);
 
     int nentries = 0;
@@ -273,15 +296,30 @@ void set_problem_2d(const int local_nx, const int local_ny, const int pad,
       }
     }
 
-    copy_int_buffer_SEND(MAX_KEYS, &h_keys, &d_keys);
-    copy_buffer_SEND(MAX_KEYS, &h_values, &d_values);
+    allocate_int_data(queue, &d_keys, MAX_KEYS);
+    allocate_data(queue, &d_values, MAX_KEYS);
 
-    Kokkos::parallel_for(local_nx*local_ny, KOKKOS_LAMBDA (const int i)
-    {
-        const int ii = i / local_nx;
-        const int jj = i % local_nx;
-        double global_xpos = edgex[jj];
-        double global_ypos = edgey[ii];
+    auto d_keys_acc = d_keys->get_access<cl::sycl::access::mode::write>();
+    auto d_values_acc = d_values->get_access<cl::sycl::access::mode::write>();
+    for (int kk = 0; kk < MAX_KEYS; ++kk) {
+      d_keys_acc[kk] = h_keys[kk];
+      d_values_acc[kk] = h_values[kk];
+    }
+
+    queue.submit([&] (cl::sycl::handler& cgh) {
+      auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
+      auto edgey_acc = edgey->get_access<cl::sycl::access::mode::read>(cgh);
+      auto d_keys_acc = d_keys->get_access<cl::sycl::access::mode::read>(cgh);
+      auto d_values_acc = d_values->get_access<cl::sycl::access::mode::read>(cgh);
+      auto density_acc = density->get_access<cl::sycl::access::mode::write>(cgh);
+      auto energy_acc = energy->get_access<cl::sycl::access::mode::write>(cgh);
+      auto temperature_acc = temperature->get_access<cl::sycl::access::mode::write>(cgh);
+
+      cgh.parallel_for<class set_problem_2d_kernel>(cl::sycl::range<1>(local_nx*local_ny), [=](cl::sycl::id<1> idx) {
+        const int ii = idx[0] / local_nx;
+        const int jj = idx[0] % local_nx;
+        double global_xpos = edgex_acc[jj];
+        double global_ypos = edgey_acc[ii];
 
         // Check we are in bounds of the problem entry
         if (global_xpos >= xpos &&
@@ -291,20 +329,17 @@ void set_problem_2d(const int local_nx, const int local_ny, const int pad,
 
             // The upper bound excludes the bounding box for the entry
             for (int nn = 0; nn < nkeys - (2 * ndims); ++nn) {
-                const int key = d_keys[nn];
+                const int key = d_keys_acc[nn];
                 if (key == DENSITY_KEY) {
-                    density[i] = d_values[nn];
+                    density_acc[idx] = d_values_acc[nn];
                 } else if (key == ENERGY_KEY) {
-                    energy[i] = d_values[nn];
+                    energy_acc[idx] = d_values_acc[nn];
                 } else if (key == TEMPERATURE_KEY) {
-                    temperature[i] = d_values[nn];
+                    temperature_acc[idx] = d_values_acc[nn];
                 }
             }
         }
+      });
     });
-
   }
-
-  deallocate_host_int_data(h_keys);
-  deallocate_host_data(h_values);
 }

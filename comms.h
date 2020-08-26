@@ -92,7 +92,9 @@ void wait_on_messages(const int nmessages);
 void barrier();
 
 // Enforce reflective boundary conditions on the problem state
-void handle_boundary_2d(const int nx, const int ny, Mesh* mesh, Kokkos::View<double *> arr,
+void handle_boundary_2d(cl::sycl::queue queue,
+                        const int nx, const int ny,
+                        Mesh* mesh, cl::sycl::buffer<double, 1>* arr,
                         const int invert, const int pack);
 
 // Finalise the communications

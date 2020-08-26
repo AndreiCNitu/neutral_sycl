@@ -1,8 +1,5 @@
 #pragma once
 
-#include <Kokkos_Core.hpp>
-#include <Kokkos_Parallel.hpp>
-#include <Kokkos_View.hpp>
 
 enum { ENERGY_KEY, DENSITY_KEY, TEMPERATURE_KEY };
 
@@ -27,7 +24,7 @@ extern "C" {
 
 // Fetches all of the problem parameters
 int get_key_value_parameter(const char* specifier, const char* filename,
-                            char* keys,  Kokkos::View<double *>::HostMirror values, int* nkeys);
+                            char* keys,  double* values, int* nkeys);
 
 // Fetches all of the problem parameters
 int get_key_value_parameter_double(const char* specifier, const char* filename,

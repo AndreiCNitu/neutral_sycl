@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <CL/sycl.hpp>
+
 #include "comms.h"
 #include "mesh.h"
 #include "rand.h"
@@ -30,8 +32,8 @@ enum { PARTICLE_SENT, PARTICLE_DEAD, PARTICLE_CENSUS, PARTICLE_CONTINUE };
 
 // Represents a cross sectional table for resonance data
 typedef struct {
-  Kokkos::View<double *> keys;
-  Kokkos::View<double *> values;
+  cl::sycl::buffer<double, 1>* keys;
+  cl::sycl::buffer<double, 1>* values;
   int nentries;
 
 } CrossSection;
@@ -56,7 +58,7 @@ typedef struct {
 typedef struct {
   CrossSection* cs_scatter_table;
   CrossSection* cs_absorb_table;
-  Kokkos::View<Particle* > local_particles;
+  cl::sycl::buffer<Particle, 1>* local_particles;
 
   double initial_energy;
 
@@ -65,18 +67,20 @@ typedef struct {
   int nlocal_particles;
 
   double* scalar_flux_tally;
-  Kokkos::View<double *> energy_deposition_tally;
+
+  double* h_energy_deposition_tally;
+  cl::sycl::buffer<double, 1>* energy_deposition_tally;
 
   const char* neutral_params_filename;
 
-  Kokkos::View<uint64_t *> nfacets_reduce_array;
-  Kokkos::View<uint64_t *> ncollisions_reduce_array;
-  Kokkos::View<uint64_t *> nprocessed_reduce_array;
+  cl::sycl::buffer<uint64_t, 1>* nfacets_reduce_array;
+  cl::sycl::buffer<uint64_t, 1>* ncollisions_reduce_array;
+  cl::sycl::buffer<uint64_t, 1>* nprocessed_reduce_array;
 
 } NeutralData;
 
 
 // Initialises all of the Neutral-specific data structures.
-void initialise_neutral_data(NeutralData* neutral_data, Mesh* mesh);
+void initialise_neutral_data(cl::sycl::queue queue, NeutralData* neutral_data, Mesh* mesh);
 
 #endif

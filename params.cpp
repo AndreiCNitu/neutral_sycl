@@ -63,7 +63,7 @@ double get_double_parameter(const char* param_name, const char* filename) {
 
 // Fetches all of the problem parameters
 int get_key_value_parameter(const char* specifier, const char* filename,
-                            char* keys,  Kokkos::View<double *>::HostMirror values, int* nkeys) {
+                            char* keys, double* values, int* nkeys) {
   char line[MAX_STR_LEN];
   char* param_line = line;
 
@@ -87,7 +87,8 @@ int get_key_value_parameter(const char* specifier, const char* filename,
       break; // We have encountered a comment so bail
     } else if (param_line[cc] != ' ') {
       if (parse_value) {
-        sscanf(&param_line[cc], "%lf", &values[(*nkeys)++]);
+        sscanf(&(param_line[cc]), "%lf", &(values[*nkeys]));
+        (*nkeys)++;
 
         // Move the pointer to next space or end of line
         while ((++cc < param_len) && (param_line[cc] != ' '))
