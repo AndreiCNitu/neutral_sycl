@@ -182,7 +182,7 @@ void solve_transport_2d(
   });
   queue.wait_and_throw();
   } catch (const cl::sycl::exception& e) {
-        std::cout << "Caught SYCL exception when running kernelul muist:"
+        std::cout << "Caught SYCL exception when running main kernel"
                   << std::endl << e.what() << std::endl;
       }
   printf("Particles  %llu\n", *nparticles);
