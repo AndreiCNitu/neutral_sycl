@@ -553,9 +553,6 @@ void validate(const int nx, const int ny, const char* params_filename,
   } else {
     printf("FAILED validation.\n");
   }
-
-  // free(keys);
-  // free(values);
 }
 
 // Initialises a new particle ready for tracking
@@ -572,14 +569,13 @@ size_t inject_particles(cl::sycl::queue queue,
     const double initial_energy,
     cl::sycl::buffer<Particle, 1>** particles) {
 
-  *particles = new cl::sycl::buffer<Particle, 1>(cl::sycl::range<1>(nparticles*2)); // TODO: why *2 ?
+  *particles = new cl::sycl::buffer<Particle, 1>(cl::sycl::range<1>(nparticles*2));
 
   START_PROFILING(&compute_profile);
 
   cl::sycl::buffer<Particle, 1> particles_ = **particles;
   queue.submit([&] (cl::sycl::handler& cgh) {
       auto particles_acc = particles_.get_access<cl::sycl::access::mode::read_write>(cgh);
-      // TODO: maybe discard access
       auto edgex_acc = edgex->get_access<cl::sycl::access::mode::read>(cgh);
       auto edgey_acc = edgey->get_access<cl::sycl::access::mode::read>(cgh);
 

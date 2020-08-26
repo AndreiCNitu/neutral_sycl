@@ -91,9 +91,6 @@ neutral_data.nthreads = total_threads;
 
   initialise_neutral_data(queue, &neutral_data, &mesh);
 
-  // Make sure initialisation phase is complete
-  // barrier();
-
  // Main timestep loop where we will track each particle through time
   int tt;
   double wallclock = 0.0;
@@ -107,7 +104,6 @@ neutral_data.nthreads = total_threads;
     uint64_t facet_events = 0;
     uint64_t collision_events = 0;
 
-    // double w0 = omp_get_wtime(); TODO
     struct  timeval timstr; /* structure to hold elapsed time */
     struct  rusage ru;      /* structure to hold CPU time--system and user */
     double  tic, toc;       /* floating point numbers to calculate elapsed wallclock time */
@@ -128,8 +124,6 @@ neutral_data.nthreads = total_threads;
         neutral_data.energy_deposition_tally,
         &facet_events, &collision_events, queue);
 
-    // barrier();
-
     gettimeofday(&timstr, NULL);
     double step_time = timstr.tv_sec + (timstr.tv_usec / 1000000.0) - w0;
     wallclock += step_time;
@@ -137,10 +131,6 @@ neutral_data.nthreads = total_threads;
     printf("Wallclock  %.4fs\n", wallclock);
     printf("Facets     %lu\n", facet_events);
     printf("Collisions %lu\n", collision_events);
-
-    // Note that this metric is only valid in the single event case
-    // printf("Facet Events / s %.2e\n", facet_events / step_time); TODO
-    // printf("Collision Events / s %.2e\n", collision_events / step_time); TODO
 
     elapsed_sim_time += mesh.dt;
 
@@ -156,7 +146,6 @@ neutral_data.nthreads = total_threads;
     PRINT_PROFILING_RESULTS(&p);
 
     printf("Final Wallclock %.9fs\n", wallclock);
-    // printf("Elapsed Simulation Time %.6fs\n", elapsed_sim_time);
   }
     validate(mesh.local_nx - 2 * mesh.pad, mesh.local_ny - 2 * mesh.pad,
            neutral_data.neutral_params_filename, mesh.rank,

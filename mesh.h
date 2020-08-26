@@ -31,7 +31,6 @@ typedef struct {
   int pad;
 
   // Mesh differentials
-
   cl::sycl::buffer<double, 1>* edgex;
   cl::sycl::buffer<double, 1>* edgey;
   cl::sycl::buffer<double, 1>* edgez;
@@ -73,10 +72,6 @@ void mesh_data_init_2d(cl::sycl::queue queue,
                        const double height, cl::sycl::buffer<double, 1>* edgex, cl::sycl::buffer<double, 1>* edgey,
                        cl::sycl::buffer<double, 1>* edgedx, cl::sycl::buffer<double, 1>* edgedy,
                        cl::sycl::buffer<double, 1>* celldx, cl::sycl::buffer<double, 1>* celldy);
-
-// TODO
-// Deallocate all of the mesh memory
-// void finalise_mesh(Mesh* mesh);
 
 #ifdef __cplusplus
 }

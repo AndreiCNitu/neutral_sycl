@@ -19,20 +19,3 @@ void initialise_mesh_2d(cl::sycl::queue queue, Mesh* mesh) {
                     mesh->width, mesh->height, mesh->edgex, mesh->edgey,
                     mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 }
-
-// TODO
-// Deallocate all of the mesh memory
-// void finalise_mesh(Mesh* mesh) {
-//   deallocate_data(mesh->edgedy);
-//   deallocate_data(mesh->celldy);
-//   deallocate_data(mesh->edgedx);
-//   deallocate_data(mesh->celldx);
-//   deallocate_data(mesh->north_buffer_out);
-//   deallocate_data(mesh->east_buffer_out);
-//   deallocate_data(mesh->south_buffer_out);
-//   deallocate_data(mesh->west_buffer_out);
-//   deallocate_data(mesh->north_buffer_in);
-//   deallocate_data(mesh->east_buffer_in);
-//   deallocate_data(mesh->south_buffer_in);
-//   deallocate_data(mesh->west_buffer_in);
-// }

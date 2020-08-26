@@ -18,15 +18,6 @@ void handle_boundary_2d(cl::sycl::queue queue,
   const int pad = mesh->pad;
   int* neighbours = mesh->neighbours;
 
-  // TODO redundant
-  // queue.submit([&] (cl::sycl::handler& cgh) {
-  //     auto buf_acc = buf->get_access<cl::sycl::access::mode::ACCESS_MODE>(cgh);
-  //
-  //     cgh.parallel_for<class whyyyyyy>(cl::sycl::range<1>(TODO), [=](cl::sycl::id<1> idx) {
-  //       buf_acc[idx] = 0.0f;
-  //     });
-  //   });
-
   // Perform the boundary reflections, potentially with the data updated from
   // neighbours
   double x_inversion_coeff = (invert == INVERT_X) ? -1.0 : 1.0;

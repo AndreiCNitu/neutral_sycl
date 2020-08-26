@@ -160,9 +160,6 @@ void read_cs_file(cl::sycl::queue queue, const char* filename, CrossSection* cs,
     cs_keys_acc[kk] = h_keys[kk];
     cs_values_acc[kk] = h_values[kk];
   }
-  // TODO:
-  //move_host_buffer_to_device(queue, cs->nentries, h_keys, &cs->keys);
-  //move_host_buffer_to_device(queue, cs->nentries, h_values, &cs->values);
 }
 
 // Initialises the state

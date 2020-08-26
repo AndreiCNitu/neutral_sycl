@@ -70,15 +70,6 @@ void allocate_host_float_data(float* buf, size_t len);
 void allocate_host_int_data(int** buf, size_t len);
 void allocate_host_uint64_data(uint64_t* buf, size_t len);
 
-// TODO 
-// void copy_buffer_SEND(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst);
-// void copy_float_buffer_SEND(const size_t len, Kokkos::View<float*>::HostMirror* src, Kokkos::View<float*>* dst);
-// void copy_int_buffer_SEND(const size_t len, Kokkos::View<int*>::HostMirror* src, Kokkos::View<int*>* dst);
-//
-// void copy_buffer_RECEIVE(const size_t len, Kokkos::View<double*>* src, Kokkos::View<double*>::HostMirror* dst);
-//
-// void move_host_buffer_to_device(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst);
-
 // Write out data for visualisation in visit
 void write_to_visit(const int nx, const int ny, const int x_off,
                     const int y_off, const double* data, const char* name,

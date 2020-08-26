@@ -139,7 +139,7 @@ void allocate_host_data(double** buf, const size_t len) {
     *buf = (double*) malloc(sizeof(double) * len);
 
     for (int i = 0; i < len; ++i) {
-        (*buf)[i] = 1.0; // TODO Why 1, not 0 ?
+        (*buf)[i] = 1.0;
     }
 }
 
@@ -235,25 +235,7 @@ void mesh_data_init_2d(cl::sycl::queue queue,
         celldy_acc[idx] = height / (global_ny);
       });
     });
-    // Kokkos::fence();
 }
-
-// TODO remove, not needed in SYCL
-// void copy_buffer_SEND(const size_t len, Kokkos::View<double*>::HostMirror* src, Kokkos::View<double*>* dst) {
-//     deep_copy(*dst, *src);
-// }
-//
-// void copy_float_buffer_SEND(const size_t len, Kokkos::View<float*>::HostMirror* src, Kokkos::View<float*>* dst) {
-//     deep_copy(*dst, *src);
-// }
-//
-// void copy_int_buffer_SEND(const size_t len, Kokkos::View<int*>::HostMirror* src, Kokkos::View<int*>* dst) {
-//     deep_copy(*dst, *src);
-// }
-//
-// void copy_buffer_RECEIVE(const size_t len, Kokkos::View<double*>* src, Kokkos::View<double*>::HostMirror* dst) {
-//     deep_copy(*dst, *src);
-// }
 
 void move_host_buffer_to_device(cl::sycl::queue queue,
                                 const size_t len,
@@ -313,9 +295,6 @@ void set_problem_2d(cl::sycl::queue queue,
             key);
       }
     }
-
-    // copy_int_buffer_SEND(MAX_KEYS, &h_keys, &d_keys);
-    // copy_buffer_SEND(MAX_KEYS, &h_values, &d_values);
 
     allocate_int_data(queue, &d_keys, MAX_KEYS);
     allocate_data(queue, &d_values, MAX_KEYS);
